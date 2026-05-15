@@ -451,6 +451,49 @@ function clearEditBuffers(
 }
 
 /**
+ * Resolve which AI CLI to use for a given run. Three responsibilities:
+ *
+ *   1. **Lazy-detect** the installed CLIs the first time anything needs the
+ *      list — used to live only behind `setAiKind`, so the commit composer
+ *      (which doesn't touch `setAiKind`) would fire on an empty list and
+ *      report "No AI CLI detected" even with Codex installed.
+ *   2. **Prefer the user's pick** when it's still available.
+ *   3. **Fall back to the first installed CLI** when the saved preference
+ *      points at something that isn't on disk (e.g. user uninstalled
+ *      Claude Code, or switched machines) — and persist that fallback so
+ *      future runs go straight through.
+ *
+ * Returns `null` only when no CLI is installed at all.
+ */
+async function resolveAvailableCli(
+  get: () => State,
+  set: (partial: Partial<State>) => void,
+): Promise<AiCliInfo | null> {
+  let list = get().aiCliList;
+  if (list.length === 0) {
+    try {
+      list = await aiApi.detectAiClis();
+      set({ aiCliList: list });
+    } catch {
+      // Fall through; the empty-list check below will surface the error.
+    }
+  }
+  const preferred = get().settings.preferredAiCli;
+  let cli = preferred
+    ? list.find((c) => c.id === preferred && c.available) ?? null
+    : null;
+  if (!cli) {
+    const fallback = list.find((c) => c.available) ?? null;
+    if (fallback) {
+      // Persist so the user doesn't see this fallback path again next run.
+      get().setPreferredAiCli(fallback.id);
+      cli = fallback;
+    }
+  }
+  return cli;
+}
+
+/**
  * Compose the prompt sent to the user's AI CLI for a given action. Kept on
  * the renderer side (vs the Rust layer) so we can iterate on wording without
  * recompiling the backend.
@@ -1467,10 +1510,7 @@ export const useRepoStore = create<State>((set, get) => ({
   runAi: async (kind) => {
     const state = get();
     if (!state.repository) return;
-    const cliId = state.settings.preferredAiCli;
-    const cli = cliId
-      ? state.aiCliList.find((c) => c.id === cliId && c.available)
-      : null;
+    const cli = await resolveAvailableCli(get, set);
     if (!cli) {
       set({
         aiOutput: null,
@@ -1518,10 +1558,7 @@ export const useRepoStore = create<State>((set, get) => ({
   generateCommitDraft: async () => {
     const state = get();
     if (!state.repository || state.commitDraftLoading) return;
-    const cliId = state.settings.preferredAiCli;
-    const cli = cliId
-      ? state.aiCliList.find((c) => c.id === cliId && c.available)
-      : null;
+    const cli = await resolveAvailableCli(get, set);
     if (!cli) {
       set({
         errorMessage:
