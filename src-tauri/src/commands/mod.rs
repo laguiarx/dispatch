@@ -1,4 +1,5 @@
 pub mod ai;
+pub mod gh;
 pub mod git;
 pub mod repository;
 pub mod replace;

@@ -134,6 +134,30 @@ export async function undoLastCommit(repoPath: string): Promise<void> {
   await invoke<void>("git_undo_last_commit", { repoPath });
 }
 
+export async function defaultBranch(repoPath: string): Promise<string> {
+  return invoke<string>("git_default_branch", { repoPath });
+}
+
+export type GhStatus = {
+  installed: boolean;
+  authenticated: boolean;
+  hostname: string | null;
+};
+
+export async function ghDetectStatus(): Promise<GhStatus> {
+  return invoke<GhStatus>("gh_detect_status");
+}
+
+export async function ghPrCreate(args: {
+  repoPath: string;
+  title: string;
+  body: string;
+  base: string;
+  head?: string;
+}): Promise<string> {
+  return invoke<string>("gh_pr_create", args);
+}
+
 export async function listRepoFiles(repoPath: string): Promise<string[]> {
   return invoke<string[]>("list_repo_files", { repoPath });
 }

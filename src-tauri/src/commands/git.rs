@@ -899,6 +899,41 @@ pub fn git_fetch(repo_path: String) -> AppResult<()> {
     Ok(())
 }
 
+/// Resolve the repository's "default" branch (where PRs should be opened
+/// against). Strategy: prefer the symbolic ref `origin/HEAD`; fall back to
+/// `main`; then `master`; finally bubble an error. Used by the "Create PR"
+/// flow to pick the base branch.
+#[tauri::command]
+pub fn git_default_branch(repo_path: String) -> AppResult<String> {
+    let repo = resolve_repo(&repo_path)?;
+    if let Ok(s) =
+        run_git_string(&repo, &["symbolic-ref", "--short", "refs/remotes/origin/HEAD"])
+    {
+        let s = s.trim();
+        if let Some(stripped) = s.strip_prefix("origin/") {
+            if !stripped.is_empty() {
+                return Ok(stripped.to_string());
+            }
+        }
+        if !s.is_empty() {
+            return Ok(s.to_string());
+        }
+    }
+    for candidate in ["main", "master"] {
+        if run_git(
+            &repo,
+            &["show-ref", "--verify", "--quiet", &format!("refs/heads/{candidate}")],
+        )
+        .is_ok()
+        {
+            return Ok(candidate.to_string());
+        }
+    }
+    Err(AppError::msg(
+        "Couldn't determine the default branch (no origin/HEAD, no main, no master)",
+    ))
+}
+
 /// Undo the last commit while keeping its changes staged (`git reset --soft
 /// HEAD~1`). Matches VS Code's "Undo Last Commit" semantics — the user can
 /// re-edit the message in the composer and recommit.

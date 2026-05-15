@@ -27,6 +27,7 @@ import {
   writeSettings,
   type Density,
   type DiffExpansion,
+  type EditorCursor,
   type RecentRepo,
   type SearchView,
   type Settings,
@@ -171,6 +172,26 @@ type State = {
    */
   commitDraft: string;
   commitDraftLoading: boolean;
+  /**
+   * Which standalone Git op is in flight, if any. Used by the commit
+   * composer's chevron button to render a spinner + by the dropdown menu
+   * to mark which row is currently running. `null` when idle.
+   */
+  gitOpLoading: "push" | "pull" | "fetch" | "undo" | null;
+  /**
+   * State of the multi-step "Create PR" pipeline. `idle` until the user
+   * fires it; cycles through the named steps with the current human-readable
+   * label streamed into `prFlowMessage`; lands on `done` (with `prFlowUrl`
+   * populated) or `error`.
+   */
+  prFlow: {
+    state: "idle" | "running" | "done" | "error";
+    message: string;
+    url: string | null;
+    error: string | null;
+  };
+  /** Open the "Branch choice" dialog before running `createPr`. */
+  prBranchChoiceOpen: boolean;
   repoFiles: string[];
   repoFilesLoading: boolean;
   branches: BranchInfo[];
@@ -207,6 +228,7 @@ type State = {
   setAutoOpenLast: (value: boolean) => void;
   setDiffExpansion: (value: DiffExpansion) => void;
   setSearchView: (value: SearchView) => void;
+  setEditorCursor: (value: EditorCursor) => void;
   setUiFont: (value: FontPreset, custom?: string) => void;
   setCodeFont: (value: MonoPreset, custom?: string) => void;
   setCustomColor: (key: string, value: string | null) => void;
@@ -334,6 +356,25 @@ type State = {
   /** `git reset --soft HEAD~1` — keeps the changes staged so the user can
    *  re-edit the message in the composer and commit again. */
   gitUndoLastCommit: () => Promise<void>;
+  /** Open the "use current branch / create new branch" dialog. */
+  openPrBranchChoice: () => void;
+  /** Close the branch-choice dialog without starting anything. */
+  closePrBranchChoice: () => void;
+  /** Reset the PR-flow modal back to idle (and clear url/error). */
+  resetPrFlow: () => void;
+  /**
+   * Run the end-to-end "Create PR" pipeline:
+   *   - optionally create + checkout a new branch from current
+   *   - commit any uncommitted changes (AI-generated message if textarea empty)
+   *   - push (with -u when needed)
+   *   - generate PR title + body via AI
+   *   - call `gh pr create` against the repo's default branch
+   *   - stream human-readable progress into `prFlow.message`
+   *
+   * `newBranchName` is supplied by the dialog when the user picks "Create
+   * new branch"; pass null to use the current branch as-is.
+   */
+  createPr: (opts: { newBranchName: string | null }) => Promise<void>;
   /** Flip the onboarding flag (used by the first-run modal). */
   setFirstRunCompleted: (v: boolean) => void;
 
@@ -615,6 +656,9 @@ export const useRepoStore = create<State>((set, get) => ({
   aiError: null,
   commitDraft: "",
   commitDraftLoading: false,
+  gitOpLoading: null,
+  prFlow: { state: "idle", message: "", url: null, error: null },
+  prBranchChoiceOpen: false,
   repoFiles: [],
   repoFilesLoading: false,
   branches: [],
@@ -673,6 +717,15 @@ export const useRepoStore = create<State>((set, get) => ({
     set((s) => {
       const next = { ...s.settings, searchView };
       writeSettings(next);
+      return { settings: next };
+    });
+  },
+  setEditorCursor: (editorCursor) => {
+    set((s) => {
+      const next = { ...s.settings, editorCursor };
+      writeSettings(next);
+      // Drive the CSS via a data attribute so the rule lives in index.css.
+      document.documentElement.setAttribute("data-editor-cursor", editorCursor);
       return { settings: next };
     });
   },
@@ -1650,7 +1703,8 @@ export const useRepoStore = create<State>((set, get) => ({
 
   gitPush: async () => {
     const state = get();
-    if (!state.repository) return;
+    if (!state.repository || state.gitOpLoading != null) return;
+    set({ gitOpLoading: "push" });
     try {
       try {
         await gitApi.push(state.repository.path);
@@ -1666,42 +1720,216 @@ export const useRepoStore = create<State>((set, get) => ({
       await get().refresh();
     } catch (err) {
       set({ errorMessage: err instanceof Error ? err.message : String(err) });
+    } finally {
+      set({ gitOpLoading: null });
     }
   },
 
   gitPull: async () => {
     const state = get();
-    if (!state.repository) return;
+    if (!state.repository || state.gitOpLoading != null) return;
+    set({ gitOpLoading: "pull" });
     try {
       await gitApi.pull(state.repository.path);
       get().pushToast("Pulled");
       await get().refresh();
     } catch (err) {
       set({ errorMessage: err instanceof Error ? err.message : String(err) });
+    } finally {
+      set({ gitOpLoading: null });
     }
   },
 
   gitFetchRemote: async () => {
     const state = get();
-    if (!state.repository) return;
+    if (!state.repository || state.gitOpLoading != null) return;
+    set({ gitOpLoading: "fetch" });
     try {
       await gitApi.fetchRemote(state.repository.path);
       get().pushToast("Fetched");
       await get().refresh();
     } catch (err) {
       set({ errorMessage: err instanceof Error ? err.message : String(err) });
+    } finally {
+      set({ gitOpLoading: null });
     }
   },
 
   gitUndoLastCommit: async () => {
     const state = get();
-    if (!state.repository) return;
+    if (!state.repository || state.gitOpLoading != null) return;
+    set({ gitOpLoading: "undo" });
     try {
       await gitApi.undoLastCommit(state.repository.path);
       get().pushToast("Undid last commit (changes kept staged)");
       await get().refresh();
     } catch (err) {
       set({ errorMessage: err instanceof Error ? err.message : String(err) });
+    } finally {
+      set({ gitOpLoading: null });
+    }
+  },
+
+  openPrBranchChoice: () => set({ prBranchChoiceOpen: true }),
+  closePrBranchChoice: () => set({ prBranchChoiceOpen: false }),
+  resetPrFlow: () =>
+    set({
+      prFlow: { state: "idle", message: "", url: null, error: null },
+    }),
+
+  createPr: async ({ newBranchName }) => {
+    const startState = get();
+    if (!startState.repository) return;
+    if (startState.prFlow.state === "running") return;
+
+    const repoPath = startState.repository.path;
+    const setStep = (message: string) =>
+      set((s) => ({
+        prFlow: { ...s.prFlow, state: "running", message },
+      }));
+    const fail = (error: string) =>
+      set({
+        prFlow: { state: "error", message: "", url: null, error },
+      });
+
+    set({
+      prBranchChoiceOpen: false,
+      prFlow: { state: "running", message: "Checking gh CLI…", url: null, error: null },
+    });
+
+    try {
+      // 1) gh installed + authenticated? Fail early — no point in pushing
+      //    a branch we can't open a PR from.
+      const gh = await gitApi.ghDetectStatus();
+      if (!gh.installed) {
+        fail("`gh` CLI not found. Install with `brew install gh`, then run `gh auth login`.");
+        return;
+      }
+      if (!gh.authenticated) {
+        fail("`gh` is installed but not authenticated. Run `gh auth login` in a terminal.");
+        return;
+      }
+
+      // 2) Resolve the base branch (PR target).
+      setStep("Resolving default branch…");
+      const baseBranch = await gitApi.defaultBranch(repoPath);
+
+      // 3) Optionally create + checkout a new branch.
+      if (newBranchName) {
+        setStep(`Creating branch ${newBranchName}…`);
+        await gitApi.createBranch(repoPath, newBranchName);
+        await get().refresh();
+      }
+
+      // 4) Commit any pending changes. Stage everything first so the AI
+      //    sees the full picture, then commit. Skip if working tree clean
+      //    AND there are unpushed commits to PR — gh will still find them.
+      const filesAfterMaybeBranch = get().files;
+      const hasChanges = filesAfterMaybeBranch.length > 0;
+      if (hasChanges) {
+        const unstaged = filesAfterMaybeBranch
+          .filter((f) => !f.staged)
+          .map((f) => f.path);
+        if (unstaged.length > 0) {
+          setStep("Staging changes…");
+          await gitApi.stagePaths(repoPath, unstaged);
+        }
+
+        setStep("Drafting commit message with AI…");
+        const cli = await resolveAvailableCli(get, set);
+        if (!cli) {
+          fail("No AI CLI detected. Install Claude Code or Codex CLI and pick one in Preferences → AI.");
+          return;
+        }
+        const commitUserPrompt = get().settings.aiSystemPrompts.commit ?? "";
+        const commitPrompt = await buildPromptForKind(
+          "commit",
+          repoPath,
+          commitUserPrompt,
+        );
+        const commitMessage = (
+          await aiApi.runAiCli(cli.id, commitPrompt, repoPath)
+        ).trim();
+        if (!commitMessage) {
+          fail("AI returned an empty commit message — refusing to commit.");
+          return;
+        }
+
+        setStep("Committing…");
+        await gitApi.commit(repoPath, commitMessage);
+        await get().refresh();
+      }
+
+      // 5) Push (with -u when there's no upstream yet — typical for a
+      //    freshly created branch).
+      setStep("Pushing to remote…");
+      try {
+        await gitApi.push(repoPath);
+      } catch (pushErr) {
+        const m = pushErr instanceof Error ? pushErr.message : String(pushErr);
+        if (/no upstream branch|--set-upstream/i.test(m)) {
+          await gitApi.push(repoPath, true);
+        } else {
+          throw pushErr;
+        }
+      }
+
+      // 6) Draft PR title + body via AI (separate from commit message —
+      //    the PR description summarizes the whole branch, not one commit).
+      setStep("Drafting PR description with AI…");
+      const cli = await resolveAvailableCli(get, set);
+      if (!cli) {
+        fail("AI CLI vanished mid-flow — check Preferences → AI.");
+        return;
+      }
+      const prUserPrompt = get().settings.aiSystemPrompts.pr ?? "";
+      const prPrompt = await buildPromptForKind("pr", repoPath, prUserPrompt);
+      const prRaw = (await aiApi.runAiCli(cli.id, prPrompt, repoPath)).trim();
+      if (!prRaw) {
+        fail("AI returned an empty PR description.");
+        return;
+      }
+      // Split the AI output into title (first non-empty line) + body
+      // (everything after). Strips a leading `# ` if the AI gave it as
+      // an H1 — gh treats title as plain text.
+      const lines = prRaw.split(/\r?\n/);
+      let title = "";
+      let bodyStart = 0;
+      for (let i = 0; i < lines.length; i++) {
+        const t = lines[i].trim();
+        if (t.length === 0) continue;
+        title = t.replace(/^#+\s*/, "");
+        bodyStart = i + 1;
+        break;
+      }
+      const body = lines.slice(bodyStart).join("\n").trim();
+      if (!title) {
+        fail("Couldn't parse a PR title from the AI output.");
+        return;
+      }
+
+      // 7) Finally — create the PR. gh resolves the head branch from the
+      //    current checkout when --head is omitted.
+      setStep(`Opening PR against ${baseBranch}…`);
+      const url = await gitApi.ghPrCreate({
+        repoPath,
+        title,
+        body,
+        base: baseBranch,
+      });
+
+      set({
+        prFlow: {
+          state: "done",
+          message: `Created PR · ${title}`,
+          url,
+          error: null,
+        },
+      });
+      get().pushToast(`Opened PR: ${title}`);
+      await get().refresh();
+    } catch (err) {
+      fail(err instanceof Error ? err.message : String(err));
     }
   },
 

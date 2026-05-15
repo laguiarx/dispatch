@@ -23,12 +23,12 @@ function computeAnchor(): Anchor {
 // "Generate commit message" lives in the Changes-tab composer in the
 // sidebar now — it operates on the staged diff and feeds a real textarea
 // the user can edit before committing, which doesn't fit a global menu.
-const ACTIONS = [
-  {
-    kind: "pr" as const,
-    label: "Draft PR description",
-    description: "Summary + test plan for the changes on this branch.",
-  },
+//
+// Items here are split in two:
+//   - `pr-create`: a real action (branch → commit → push → gh pr create),
+//     handled specially in the click callback.
+//   - `summary` / `risk`: read-only AI text actions that open the modal.
+const READ_ONLY_ACTIONS = [
   {
     kind: "summary" as const,
     label: "Summarize this diff",
@@ -52,6 +52,7 @@ export function GitMenu() {
   const setOpen = useRepoStore((s) => s.setGitMenuOpen);
   const aiKind = useRepoStore((s) => s.aiKind);
   const setAiKind = useRepoStore((s) => s.setAiKind);
+  const openPrBranchChoice = useRepoStore((s) => s.openPrBranchChoice);
 
   const ref = useRef<HTMLDivElement | null>(null);
   const [anchor, setAnchor] = useState<Anchor>({ top: 60, right: 16 });
@@ -99,14 +100,30 @@ export function GitMenu() {
       ref={ref}
       style={{ top: anchor.top, right: anchor.right }}
     >
-      <div className="git-menu-head dim">Git · AI Assist</div>
-      {ACTIONS.map((a) => (
+      <div className="git-menu-head dim">Git · Actions</div>
+      {/* Real action: stages → commits → pushes → opens the PR via gh. */}
+      <button
+        key="pr-create"
+        className="git-menu-item is-primary"
+        onClick={() => {
+          openPrBranchChoice();
+          setOpen(false);
+        }}
+        type="button"
+      >
+        <span className="git-menu-item-label">Create Pull Request</span>
+        <span className="git-menu-item-desc dim">
+          Branch · commit · push · open PR on GitHub.
+        </span>
+      </button>
+
+      <div className="git-menu-sep" />
+      <div className="git-menu-head dim">AI Assist</div>
+      {READ_ONLY_ACTIONS.map((a) => (
         <button
           key={a.kind}
           className={cn("git-menu-item", aiKind === a.kind && "is-active")}
           onClick={() => {
-            // Re-clicking the active action toggles it off (consistent with
-            // the previous per-file RightPanel behaviour).
             setAiKind(aiKind === a.kind ? null : a.kind);
             setOpen(false);
           }}

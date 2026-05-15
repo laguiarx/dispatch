@@ -4,6 +4,8 @@ import { Sidebar } from "@/components/Sidebar";
 import { DiffPane } from "@/components/DiffPane";
 import { TabStrip } from "@/components/TabStrip";
 import { AiOutputDialog } from "@/components/AiOutputDialog";
+import { PrBranchChoiceDialog } from "@/components/PrBranchChoiceDialog";
+import { PrFlowDialog } from "@/components/PrFlowDialog";
 import { ReplaceOverlay } from "@/components/ReplaceOverlay";
 import { CommandPalette } from "@/components/CommandPalette";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -75,6 +77,10 @@ export function App() {
     applySansFont(settings.uiFont, settings.customUiFont);
     applyMonoFont(settings.codeFont, settings.customCodeFont);
     applyCustomColors(settings.customColors);
+    document.documentElement.setAttribute(
+      "data-editor-cursor",
+      settings.editorCursor,
+    );
   }, [
     settings.theme,
     settings.density,
@@ -83,6 +89,7 @@ export function App() {
     settings.customUiFont,
     settings.customCodeFont,
     settings.customColors,
+    settings.editorCursor,
   ]);
 
   // Show the welcome tour on first launch.
@@ -287,6 +294,8 @@ export function App() {
       <StashPromptDialog />
       <OnboardingModal />
       <AiOutputDialog />
+      <PrBranchChoiceDialog />
+      <PrFlowDialog />
       <Toast messages={toasts} />
     </div>
   );

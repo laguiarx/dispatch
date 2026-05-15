@@ -131,11 +131,14 @@ export function SettingsDialog() {
 function AppearanceSection() {
   const settings = useRepoStore((s) => s.settings);
   const setTheme = useRepoStore((s) => s.setTheme);
+  const setEditorCursor = useRepoStore((s) => s.setEditorCursor);
   return (
     <section className="settings-section">
       <div className="settings-section-head">
         <div className="settings-section-title">Appearance</div>
-        <div className="settings-section-sub dim">Theme presets.</div>
+        <div className="settings-section-sub dim">
+          Theme + editor caret style.
+        </div>
       </div>
       <div className="settings-row settings-row-stack">
         <div className="settings-row-label">Theme</div>
@@ -155,6 +158,33 @@ function AppearanceSection() {
               <span className="theme-card-hint dim">{t.hint}</span>
             </button>
           ))}
+        </div>
+      </div>
+      <div className="settings-row">
+        <div className="settings-row-label">Editor caret</div>
+        <div className="seg">
+          <button
+            className={cn(
+              "seg-btn",
+              settings.editorCursor === "block" && "is-active",
+            )}
+            onClick={() => setEditorCursor("block")}
+            type="button"
+            title="Wider block-shape caret (terminal-like)"
+          >
+            Block
+          </button>
+          <button
+            className={cn(
+              "seg-btn",
+              settings.editorCursor === "blink" && "is-active",
+            )}
+            onClick={() => setEditorCursor("blink")}
+            type="button"
+            title="Thin bar — blink rate follows OS Keyboard settings"
+          >
+            Blink
+          </button>
         </div>
       </div>
     </section>

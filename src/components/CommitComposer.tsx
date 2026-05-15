@@ -32,9 +32,14 @@ export function CommitComposer() {
   const gitPull = useRepoStore((s) => s.gitPull);
   const gitFetchRemote = useRepoStore((s) => s.gitFetchRemote);
   const gitUndoLastCommit = useRepoStore((s) => s.gitUndoLastCommit);
+  const gitOpLoading = useRepoStore((s) => s.gitOpLoading);
   const stagedCount = useRepoStore(
     (s) => s.files.filter((f) => f.staged).length,
   );
+  // Single "is any git/commit work in flight" flag — drives the chevron's
+  // spinner and the disabled state of every menu row, so the user can't
+  // queue two ops on top of each other.
+  const anyBusy = loading || gitOpLoading != null;
 
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const menuWrapRef = useRef<HTMLDivElement | null>(null);
@@ -68,8 +73,9 @@ export function CommitComposer() {
     };
   }, [menuOpen]);
 
-  const canCommit = stagedCount > 0 && draft.trim().length > 0 && !loading;
-  const canGenerate = stagedCount > 0 && !loading;
+  const canCommit =
+    stagedCount > 0 && draft.trim().length > 0 && !anyBusy;
+  const canGenerate = stagedCount > 0 && !anyBusy;
   const closeMenu = () => setMenuOpen(false);
 
   return (
@@ -137,11 +143,20 @@ export function CommitComposer() {
             )}
             onClick={() => setMenuOpen((o) => !o)}
             disabled={loading}
-            title="More Git actions"
+            title={
+              gitOpLoading
+                ? `${gitOpLoading[0].toUpperCase()}${gitOpLoading.slice(1)}ing…`
+                : "More Git actions"
+            }
             aria-haspopup="menu"
             aria-expanded={menuOpen}
+            aria-busy={gitOpLoading != null}
           >
-            {I.chevron}
+            {gitOpLoading != null ? (
+              <span className="ai-spinner" />
+            ) : (
+              I.chevron
+            )}
           </button>
           {menuOpen ? (
             <div className="commit-composer-menu" role="menu">
@@ -180,71 +195,113 @@ export function CommitComposer() {
               <div className="commit-composer-menu-sep" />
 
               <div className="commit-composer-menu-section dim">Remote</div>
-              <button
-                role="menuitem"
-                className="commit-composer-menu-item"
-                onClick={() => {
+              <RemoteOpItem
+                op="pull"
+                label="Pull"
+                desc="`git pull --ff-only` from upstream."
+                runningLabel="Pulling…"
+                running={gitOpLoading === "pull"}
+                disabled={anyBusy}
+                onRun={() => {
                   closeMenu();
                   void gitPull();
                 }}
-                disabled={loading}
-              >
-                <span className="commit-composer-menu-label">Pull</span>
-                <span className="commit-composer-menu-desc dim">
-                  `git pull --ff-only` from upstream.
-                </span>
-              </button>
-              <button
-                role="menuitem"
-                className="commit-composer-menu-item"
-                onClick={() => {
+              />
+              <RemoteOpItem
+                op="push"
+                label="Push"
+                desc="`git push` local commits."
+                runningLabel="Pushing…"
+                running={gitOpLoading === "push"}
+                disabled={anyBusy}
+                onRun={() => {
                   closeMenu();
                   void gitPush();
                 }}
-                disabled={loading}
-              >
-                <span className="commit-composer-menu-label">Push</span>
-                <span className="commit-composer-menu-desc dim">
-                  `git push` local commits.
-                </span>
-              </button>
-              <button
-                role="menuitem"
-                className="commit-composer-menu-item"
-                onClick={() => {
+              />
+              <RemoteOpItem
+                op="fetch"
+                label="Fetch"
+                desc="`git fetch --all --prune`."
+                runningLabel="Fetching…"
+                running={gitOpLoading === "fetch"}
+                disabled={anyBusy}
+                onRun={() => {
                   closeMenu();
                   void gitFetchRemote();
                 }}
-                disabled={loading}
-              >
-                <span className="commit-composer-menu-label">Fetch</span>
-                <span className="commit-composer-menu-desc dim">
-                  `git fetch --all --prune`.
-                </span>
-              </button>
+              />
 
               <div className="commit-composer-menu-sep" />
 
-              <button
-                role="menuitem"
-                className="commit-composer-menu-item is-danger"
-                onClick={() => {
+              <RemoteOpItem
+                op="undo"
+                label="Undo last commit"
+                desc="Soft reset — keeps changes staged."
+                runningLabel="Undoing…"
+                running={gitOpLoading === "undo"}
+                disabled={anyBusy}
+                danger
+                onRun={() => {
                   closeMenu();
                   void gitUndoLastCommit();
                 }}
-                disabled={loading}
-              >
-                <span className="commit-composer-menu-label">
-                  Undo last commit
-                </span>
-                <span className="commit-composer-menu-desc dim">
-                  Soft reset — keeps changes staged.
-                </span>
-              </button>
+              />
             </div>
           ) : null}
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * One row in the chevron menu for a standalone Git op (Pull / Push / Fetch
+ * / Undo). Renders the static label by default, swaps in a spinner + the
+ * "Pulling…" gerund while the op is in flight, and stays clickable when
+ * disabled so the user can re-open the menu later. Kept local because no
+ * other place uses this shape.
+ */
+function RemoteOpItem({
+  label,
+  desc,
+  runningLabel,
+  running,
+  disabled,
+  danger,
+  onRun,
+}: {
+  op: string;
+  label: string;
+  desc: string;
+  runningLabel: string;
+  running: boolean;
+  disabled: boolean;
+  danger?: boolean;
+  onRun: () => void;
+}) {
+  return (
+    <button
+      role="menuitem"
+      className={cn(
+        "commit-composer-menu-item",
+        danger && "is-danger",
+        running && "is-running",
+      )}
+      onClick={onRun}
+      disabled={disabled}
+    >
+      <span className="commit-composer-menu-label">
+        {running ? (
+          <>
+            <span className="ai-spinner" />
+            <span>{runningLabel}</span>
+          </>
+        ) : (
+          label
+        )}
+      </span>
+      <span className="commit-composer-menu-desc dim">{desc}</span>
+    </button>
   );
 }

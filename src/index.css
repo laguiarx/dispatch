@@ -923,12 +923,215 @@ textarea::placeholder {
   background: var(--accent-soft);
   color: var(--accent);
 }
+.git-menu-item.is-primary .git-menu-item-label {
+  color: var(--accent);
+}
 .git-menu-item-label {
   font-weight: 500;
 }
 .git-menu-item-desc {
   font-size: 10.5px;
   line-height: 1.4;
+}
+.git-menu-sep {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--bd-0);
+}
+
+/* PR branch-choice dialog (radio group + optional name input). */
+.pr-branch-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0;
+}
+.pr-branch-choice-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-1);
+  border: 1px solid var(--bd-1);
+  border-radius: var(--radius-2);
+  cursor: pointer;
+  transition:
+    border-color 120ms,
+    background-color 120ms;
+}
+.pr-branch-choice-row:hover {
+  border-color: var(--bd-2);
+}
+.pr-branch-choice-row.is-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.pr-branch-choice-row input[type="radio"] {
+  accent-color: var(--accent);
+}
+.pr-branch-choice-label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--fg-0);
+}
+.pr-branch-name-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+.pr-branch-name-input {
+  flex: 1;
+  padding: 7px 10px;
+  background: var(--bg-0);
+  border: 1px solid var(--bd-1);
+  border-radius: var(--radius-2);
+  color: var(--fg-0);
+  font-size: 12px;
+  outline: none;
+  transition: border-color 120ms;
+}
+.pr-branch-name-input:focus {
+  border-color: var(--accent);
+}
+.pr-branch-name-wand {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-2);
+  background: var(--bg-1);
+  border: 1px solid var(--bd-1);
+  color: var(--fg-2);
+  cursor: pointer;
+}
+.pr-branch-name-wand:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.pr-branch-name-wand:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* PR-flow progress modal (running spinner / success / error states). */
+.pr-flow-dialog {
+  width: min(560px, 92vw);
+  background: var(--bg-1);
+  border: 1px solid var(--bd-2);
+  border-radius: var(--radius-3);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+}
+.pr-flow-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--bd-0);
+  background: var(--bg-2);
+}
+.pr-flow-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.pr-flow-close {
+  background: transparent;
+  border: 0;
+  color: var(--fg-3);
+  cursor: pointer;
+  padding: 2px;
+}
+.pr-flow-close:hover {
+  color: var(--fg-0);
+}
+.pr-flow-body {
+  padding: 18px 18px 16px;
+}
+.pr-flow-running {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--fg-0);
+}
+.pr-flow-running .ai-spinner {
+  width: 16px;
+  height: 16px;
+}
+.pr-flow-message {
+  font-variant-numeric: tabular-nums;
+}
+.pr-flow-done {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pr-flow-done-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pr-flow-check {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--git-add) 24%, transparent);
+  color: var(--git-add);
+}
+.pr-flow-check svg {
+  width: 14px;
+  height: 14px;
+}
+.pr-flow-done-title {
+  font-size: 13px;
+  color: var(--fg-0);
+  font-weight: 500;
+}
+.pr-flow-url {
+  display: block;
+  padding: 8px 10px;
+  background: var(--bg-0);
+  border: 1px solid var(--bd-1);
+  border-radius: var(--radius-2);
+  font-size: 11.5px;
+  color: var(--accent);
+  text-decoration: none;
+  word-break: break-all;
+}
+.pr-flow-url:hover {
+  border-color: var(--accent);
+}
+.pr-flow-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.pr-flow-error {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pr-flow-error-title {
+  font-size: 13px;
+  color: var(--git-del);
+  font-weight: 500;
+}
+.pr-flow-error-body {
+  font-size: 11.5px;
+  padding: 8px 10px;
+  background: var(--bg-0);
+  border: 1px solid var(--bd-1);
+  border-radius: var(--radius-2);
+  color: var(--fg-1);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* Branch dropdown — anchored to the branch pill */
@@ -1961,6 +2164,10 @@ textarea::placeholder {
   color: var(--fg-3);
   cursor: not-allowed;
 }
+.commit-composer-split-chev .ai-spinner {
+  width: 12px;
+  height: 12px;
+}
 .commit-composer-menu {
   position: absolute;
   bottom: calc(100% + 6px);
@@ -1996,6 +2203,22 @@ textarea::placeholder {
 }
 .commit-composer-menu-label {
   font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.commit-composer-menu-label .ai-spinner {
+  width: 11px;
+  height: 11px;
+}
+/* Subtle accent tint on the row whose op is in flight, so even after the
+   menu closes and reopens it's clear which one is still running. */
+.commit-composer-menu-item.is-running {
+  color: var(--accent);
+}
+.commit-composer-menu-item.is-running .commit-composer-menu-desc {
+  color: var(--accent);
+  opacity: 0.7;
 }
 .commit-composer-menu-desc {
   font-size: 10.5px;
@@ -2229,17 +2452,17 @@ textarea::placeholder {
    doesn't push the staged/unstaged groups down when the user picks files.
    Rounded chip style with a soft shadow keeps it visually distinct from
    the list it overlays. */
-/* Inline flex item sitting between the file list and the commit composer.
-   It used to float (position: absolute; bottom: 12px) but that overlapped
-   the composer when there were staged files. The pill shape stays, the
-   floating shadow stays — only the positioning changes. */
+/* Single-row pill between the file list and the commit composer. NO
+   flex-wrap — at narrow sidebar widths the icon buttons keep everything
+   on one line; if the primary Stage label can't fit, min-width: 0 lets
+   the textarea shrink before anything breaks. */
 .multiselect-bar {
   margin: 8px 10px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 6px 8px 6px 12px;
+  padding: 5px 6px 5px 10px;
   background: color-mix(in oklab, var(--accent-soft) 88%, var(--bg-1));
   border: 1px solid color-mix(in oklab, var(--accent) 45%, transparent);
   border-radius: 999px;
@@ -2247,14 +2470,15 @@ textarea::placeholder {
     0 4px 12px rgba(0, 0, 0, 0.25),
     0 0 0 0.5px rgba(255, 255, 255, 0.04);
   font-size: 11.5px;
-  flex-wrap: wrap;
+  min-width: 0;
 }
 .multiselect-bar-count {
   color: var(--accent);
   font-weight: 600;
   white-space: nowrap;
-  padding-right: 4px;
+  padding-right: 6px;
   border-right: 1px solid color-mix(in oklab, var(--accent) 30%, transparent);
+  flex-shrink: 0;
 }
 .multiselect-bar-btn {
   display: inline-flex;
@@ -2265,9 +2489,10 @@ textarea::placeholder {
   font-size: 11px;
   border-radius: 999px;
   background: transparent;
-  border: 1px solid transparent;
+  border: 0;
   color: var(--fg-1);
   white-space: nowrap;
+  min-width: 0;
 }
 .multiselect-bar-btn:hover {
   background: color-mix(in oklab, var(--accent) 18%, transparent);
@@ -2277,15 +2502,36 @@ textarea::placeholder {
   width: 11px;
   height: 11px;
 }
-.multiselect-bar-btn.is-danger:hover {
+.multiselect-bar-btn-primary {
+  /* Primary (Stage/Unstage) — the label can truncate with ellipsis if the
+     sidebar is brutally narrow, rather than push other buttons out. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.multiselect-bar-icon {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: transparent;
+  border: 0;
+  color: var(--fg-1);
+  flex-shrink: 0;
+}
+.multiselect-bar-icon:hover {
+  background: color-mix(in oklab, var(--accent) 18%, transparent);
+  color: var(--fg-0);
+}
+.multiselect-bar-icon svg {
+  width: 12px;
+  height: 12px;
+}
+.multiselect-bar-icon.is-danger:hover {
   color: var(--git-del);
   background: color-mix(in oklab, var(--git-del) 18%, transparent);
 }
 .multiselect-bar-clear {
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  justify-content: center;
   color: var(--fg-2);
 }
 
@@ -3645,6 +3891,19 @@ textarea::placeholder {
   background: var(--bg-0);
   pointer-events: none;
   line-height: 1.55;
+  /* Guarantee every row's overlay cell is exactly one line-box tall even
+     when the source line is empty. Without this, empty lines collapsed to
+     ~0px → the textarea's caret stayed at line N but the visible text
+     shifted up because the overlay row above shrunk. */
+  min-height: 1.55em;
+  /* Disable JetBrains Mono's contextual alternates / stylistic sets that
+     `body` enables. The `<textarea>` doesn't apply them (browser-rendered
+     input fields ignore most font-feature-settings), so leaving them on
+     in the overlay would make glyph widths drift between the visible
+     text and the textarea — wrapping points diverge → caret position
+     diverges. Forcing `normal` on both keeps them in lock-step. */
+  font-feature-settings: normal;
+  font-variant-ligatures: none;
 }
 .file-loading {
   display: grid;
@@ -3707,6 +3966,22 @@ textarea::placeholder {
   color: transparent;
   -webkit-text-fill-color: transparent;
   caret-color: var(--accent);
+  /* Match the overlay — see the comment on `.editor-overlay-line`. Both
+     sides must render with identical glyph widths or the caret drifts
+     away from where the actual character lands. */
+  font-feature-settings: normal;
+  font-variant-ligatures: none;
+}
+/* Caret style — driven by the user's Preferences pick.
+   - "block" (default): wider, terminal-style caret via `caret-shape: block`.
+     Supported in WebKit (Tauri uses WKWebView on macOS).
+   - "blink": the standard thin bar; the OS controls the actual blink rate
+     (System Settings → Keyboard → "Cursor blinking"). */
+:root[data-editor-cursor="block"] .editor-textarea {
+  caret-shape: block;
+}
+:root[data-editor-cursor="blink"] .editor-textarea {
+  caret-shape: bar;
 }
 .editor-textarea::selection {
   background: var(--accent-soft);

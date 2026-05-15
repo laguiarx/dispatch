@@ -509,6 +509,16 @@ function StatusFilterDropdown({
   );
 }
 
+/**
+ * Single-row pill that shows up when the user multi-selects files.
+ * Layout: `[N] [+ Stage] [- Unstage] [✓] [⌫]   [✕]`
+ *
+ * Stage/Unstage keep their text labels because they're the headline
+ * actions, and only one of them shows at a time (depending on which side
+ * of the staged/unstaged divide the selection lives on). Reviewed and
+ * Discard are icon-only with tooltips so the bar stays single-row at
+ * narrow sidebar widths (was wrapping into an ugly 2-row pill before).
+ */
 function MultiSelectBar({
   count,
   onStage,
@@ -532,13 +542,10 @@ function MultiSelectBar({
 }) {
   return (
     <div className="multiselect-bar">
-      <span className="multiselect-bar-count">
-        {count} selected
-      </span>
-      <span className="flex-spacer" />
+      <span className="multiselect-bar-count">{count}</span>
       {canStage ? (
         <button
-          className="multiselect-bar-btn"
+          className="multiselect-bar-btn multiselect-bar-btn-primary"
           onClick={onStage}
           title="Stage selected files"
           type="button"
@@ -549,7 +556,7 @@ function MultiSelectBar({
       ) : null}
       {canUnstage ? (
         <button
-          className="multiselect-bar-btn"
+          className="multiselect-bar-btn multiselect-bar-btn-primary"
           onClick={onUnstage}
           title="Unstage selected files"
           type="button"
@@ -561,25 +568,26 @@ function MultiSelectBar({
       <button
         className="multiselect-bar-btn"
         onClick={onMarkReviewed}
-        title="Toggle reviewed for selected files (⌘⇧M)"
+        title="Toggle reviewed (⌘⇧M)"
         type="button"
       >
-        {I.check}
+        {I.review}
         <span>Reviewed</span>
       </button>
       {canDiscard ? (
         <button
-          className="multiselect-bar-btn is-danger"
+          className="multiselect-bar-icon is-danger"
           onClick={onDiscard}
           title="Discard selected files"
+          aria-label="Discard"
           type="button"
         >
-          {I.undo}
-          <span>Discard</span>
+          {I.discard}
         </button>
       ) : null}
+      <span className="flex-spacer" />
       <button
-        className="multiselect-bar-btn multiselect-bar-clear"
+        className="multiselect-bar-icon multiselect-bar-clear"
         onClick={onClear}
         title="Clear selection"
         aria-label="Clear selection"
