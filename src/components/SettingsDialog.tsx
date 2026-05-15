@@ -12,18 +12,15 @@ import { I, type IconName } from "./Icons";
 import { Kbd } from "./Kbd";
 import { Overlay } from "./Overlay";
 
-type TabId =
-  | "appearance"
-  | "fonts"
-  | "colors"
-  | "diff"
-  | "ai"
-  | "startup";
+type TabId = "appearance" | "diff" | "ai" | "startup";
 
 const TABS: { id: TabId; label: string; icon: IconName; hint: string }[] = [
-  { id: "appearance", label: "Appearance", icon: "theme", hint: "Theme and density" },
-  { id: "fonts", label: "Fonts", icon: "edit", hint: "UI and code fonts" },
-  { id: "colors", label: "Colors", icon: "sparkles", hint: "Custom color overrides" },
+  {
+    id: "appearance",
+    label: "Appearance",
+    icon: "theme",
+    hint: "Theme, fonts and colors",
+  },
   { id: "diff", label: "Diff", icon: "copy", hint: "How files render" },
   { id: "ai", label: "AI", icon: "sparkles", hint: "Preferred CLI" },
   { id: "startup", label: "Startup", icon: "folder", hint: "Launch behavior" },
@@ -111,9 +108,13 @@ export function SettingsDialog() {
           </nav>
 
           <div className="settings-panel" role="tabpanel">
-            {tab === "appearance" ? <AppearanceSection /> : null}
-            {tab === "fonts" ? <FontsSection /> : null}
-            {tab === "colors" ? <CustomColorsSection /> : null}
+            {tab === "appearance" ? (
+              <>
+                <AppearanceSection />
+                <FontsSection />
+                <CustomColorsSection />
+              </>
+            ) : null}
             {tab === "diff" ? <DiffSection /> : null}
             {tab === "ai" ? <AiSection /> : null}
             {tab === "startup" ? <StartupSection /> : null}

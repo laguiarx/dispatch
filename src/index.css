@@ -1237,31 +1237,67 @@ textarea::placeholder {
   padding: 4px 0;
 }
 .branch-menu-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 8px 12px 4px;
   font-size: 10.5px;
   letter-spacing: 0.04em;
   font-weight: 600;
   color: var(--fg-3);
 }
-.branch-menu-item {
-  display: grid;
-  grid-template-columns: 16px 1fr auto;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  width: 100%;
-  text-align: left;
-  color: var(--fg-1);
-  font-size: 12px;
+.branch-menu-prune {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--git-del);
+  background: transparent;
+  border: 1px solid color-mix(in oklab, var(--git-del) 40%, transparent);
+  border-radius: 999px;
+  padding: 1px 8px;
+  cursor: pointer;
 }
-.branch-menu-item:not(:disabled):hover {
+.branch-menu-prune:hover {
+  background: color-mix(in oklab, var(--git-del) 14%, transparent);
+}
+/* Wrap row + delete button. The row itself is now a flex container so
+   the trash trailing button can sit alongside the main label. */
+.branch-menu-item {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  position: relative;
+}
+.branch-menu-item:hover {
   background: var(--bg-hover);
-  color: var(--fg-0);
 }
 .branch-menu-item.is-current {
   background: var(--bg-selected);
-  color: var(--fg-0);
+}
+.branch-menu-item.is-gone .branch-menu-item-name {
+  color: var(--fg-3);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in oklab, var(--git-del) 60%, transparent);
+}
+.branch-menu-item-main {
+  display: grid;
+  grid-template-columns: 16px 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  color: var(--fg-1);
+  font-size: 12px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.branch-menu-item-main:disabled {
   cursor: default;
+  color: var(--fg-0);
 }
 .branch-menu-item-mark {
   display: grid;
@@ -1277,6 +1313,44 @@ textarea::placeholder {
 .branch-menu-item-meta {
   font-size: 10.5px;
   white-space: nowrap;
+}
+.branch-menu-item-tag {
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+.branch-menu-item-tag.is-gone {
+  background: color-mix(in oklab, var(--git-del) 22%, transparent);
+  color: var(--git-del);
+}
+.branch-menu-item-delete {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  flex-shrink: 0;
+  color: var(--fg-3);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 100ms,
+    color 100ms,
+    background-color 100ms;
+}
+.branch-menu-item:hover .branch-menu-item-delete,
+.branch-menu-item.is-gone .branch-menu-item-delete {
+  opacity: 1;
+}
+.branch-menu-item-delete:hover {
+  color: var(--git-del);
+  background: color-mix(in oklab, var(--git-del) 14%, transparent);
+}
+.branch-menu-item-delete svg {
+  width: 12px;
+  height: 12px;
 }
 .branch-menu-empty {
   padding: 14px 14px 18px;

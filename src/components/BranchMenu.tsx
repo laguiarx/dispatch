@@ -19,6 +19,14 @@ export function BranchMenu() {
   const requestDropStash = useRepoStore((s) => s.requestDropStash);
   const createBranch = useRepoStore((s) => s.createBranch);
   const generateBranchName = useRepoStore((s) => s.generateBranchName);
+  const deleteBranch = useRepoStore((s) => s.deleteBranch);
+  const requestPruneGoneBranches = useRepoStore(
+    (s) => s.requestPruneGoneBranches,
+  );
+
+  // Count of "gone" local branches drives the visibility of the
+  // bulk-prune button at the bottom of the menu.
+  const goneCount = branches.filter((b) => !b.isRemote && b.gone).length;
 
   const [filter, setFilter] = useState("");
   const [creating, setCreating] = useState(false);
@@ -189,12 +197,32 @@ export function BranchMenu() {
         ) : null}
         {local.length > 0 ? (
           <>
-            <div className="branch-menu-section-head">Local</div>
+            <div className="branch-menu-section-head">
+              <span>Local</span>
+              {goneCount > 0 ? (
+                <button
+                  type="button"
+                  className="branch-menu-prune"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    requestPruneGoneBranches();
+                  }}
+                  title={`Delete the ${goneCount} local branch${goneCount === 1 ? "" : "es"} whose remote was deleted`}
+                >
+                  Prune gone ({goneCount})
+                </button>
+              ) : null}
+            </div>
             {local.map((b) => (
               <BranchRow
                 key={`local:${b.name}`}
                 branch={b}
                 onClick={() => checkoutBranch(b.name)}
+                onDelete={
+                  b.isCurrent
+                    ? null
+                    : () => deleteBranch(b.name, { force: b.gone })
+                }
               />
             ))}
           </>
@@ -207,6 +235,7 @@ export function BranchMenu() {
                 key={`remote:${b.name}`}
                 branch={b}
                 onClick={() => checkoutBranch(b.name)}
+                onDelete={null}
               />
             ))}
           </>
@@ -266,32 +295,70 @@ export function BranchMenu() {
 function BranchRow({
   branch,
   onClick,
+  onDelete,
 }: {
   branch: BranchInfo;
   onClick: () => void;
+  /** When null the row has no trash button (current branch / remote rows). */
+  onDelete: (() => void) | null;
 }) {
   return (
-    <button
-      className={cn("branch-menu-item", branch.isCurrent && "is-current")}
-      onClick={branch.isCurrent ? undefined : onClick}
-      disabled={branch.isCurrent}
-      title={
-        branch.isCurrent
-          ? "Already on this branch"
-          : `Checkout ${branch.name}`
-      }
+    <div
+      className={cn(
+        "branch-menu-item",
+        branch.isCurrent && "is-current",
+        branch.gone && "is-gone",
+      )}
     >
-      <span className="branch-menu-item-mark">
-        {branch.isCurrent ? I.check : null}
-      </span>
-      <span className="branch-menu-item-name mono">{branch.name}</span>
-      {branch.upstream ? (
-        <span className="branch-menu-item-meta mono dim">
-          ↳ {branch.upstream}
+      <button
+        type="button"
+        className="branch-menu-item-main"
+        onClick={branch.isCurrent ? undefined : onClick}
+        disabled={branch.isCurrent}
+        title={
+          branch.isCurrent
+            ? "Already on this branch"
+            : `Checkout ${branch.name}`
+        }
+      >
+        <span className="branch-menu-item-mark">
+          {branch.isCurrent ? I.check : null}
         </span>
-      ) : branch.isRemote ? (
-        <span className="branch-menu-item-meta mono dim">remote</span>
+        <span className="branch-menu-item-name mono">{branch.name}</span>
+        {branch.gone ? (
+          <span
+            className="branch-menu-item-tag is-gone"
+            title="Remote branch was deleted — local is orphaned"
+          >
+            gone
+          </span>
+        ) : null}
+        {branch.upstream ? (
+          <span className="branch-menu-item-meta mono dim">
+            ↳ {branch.upstream}
+          </span>
+        ) : branch.isRemote ? (
+          <span className="branch-menu-item-meta mono dim">remote</span>
+        ) : null}
+      </button>
+      {onDelete ? (
+        <button
+          type="button"
+          className="branch-menu-item-delete"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          title={
+            branch.gone
+              ? `Delete '${branch.name}' (force — upstream is gone)`
+              : `Delete '${branch.name}'`
+          }
+          aria-label={`Delete ${branch.name}`}
+        >
+          {I.discard}
+        </button>
       ) : null}
-    </button>
+    </div>
   );
 }
