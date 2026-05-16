@@ -153,6 +153,7 @@ function TerminalDrawerInner({
   const customColors = useRepoStore((s) => s.settings.customColors);
   const codeFont = useRepoStore((s) => s.settings.codeFont);
   const customCodeFont = useRepoStore((s) => s.settings.customCodeFont);
+  const uiZoom = useRepoStore((s) => s.settings.uiZoom);
 
   // Spin up xterm + PTY exactly once when the drawer mounts. The `key` on
   // the wrapper forces a clean remount when the repo path changes — the
@@ -174,7 +175,7 @@ function TerminalDrawerInner({
       // `applyMonoFont` in lib/theme.ts, so the terminal stays in sync
       // with whatever they picked in Preferences.)
       fontFamily: resolveMonoStack(),
-      fontSize: 12,
+      fontSize: 12 * uiZoom,
       lineHeight: 1.2,
       cursorBlink: true,
       allowProposedApi: true,
@@ -300,12 +301,13 @@ function TerminalDrawerInner({
     const handle = requestAnimationFrame(() => {
       term.options.theme = resolveXtermTheme();
       term.options.fontFamily = resolveMonoStack();
+      term.options.fontSize = 12 * uiZoom;
       // Force a re-measure: the font might be wider/narrower than before,
       // which would invalidate the current cols/rows.
       fitRef.current?.fit();
     });
     return () => cancelAnimationFrame(handle);
-  }, [themeId, customColors, codeFont, customCodeFont]);
+  }, [themeId, customColors, codeFont, customCodeFont, uiZoom]);
   useEffect(() => {
     // Run on next frame so the new drawer height has been laid out before
     // xterm measures.

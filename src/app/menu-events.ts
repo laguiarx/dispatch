@@ -106,6 +106,15 @@ function handle(id: string, get: typeof useRepoStore.getState): void {
     case "view:toggle-terminal":
       s.toggleTerminal();
       return;
+    case "view:zoom-in":
+      s.zoomIn();
+      return;
+    case "view:zoom-out":
+      s.zoomOut();
+      return;
+    case "view:zoom-reset":
+      s.resetZoom();
+      return;
     case "view:command-palette":
       if (s.repository) s.setPaletteMode("commands");
       return;

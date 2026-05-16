@@ -30,6 +30,9 @@ export function useKeyboardShortcuts() {
   const toggleRightSidebar = useRepoStore((s) => s.toggleRightSidebar);
   const setLeftSidebarVisible = useRepoStore((s) => s.setLeftSidebarVisible);
   const toggleTerminal = useRepoStore((s) => s.toggleTerminal);
+  const zoomIn = useRepoStore((s) => s.zoomIn);
+  const zoomOut = useRepoStore((s) => s.zoomOut);
+  const resetZoom = useRepoStore((s) => s.resetZoom);
 
   // Chord prefix state — survives across keydowns within a 1.5s window.
   const chordPrefixRef = useRef(false);
@@ -112,6 +115,23 @@ export function useKeyboardShortcuts() {
       if (mod && !e.shiftKey && !e.altKey && (e.key === "," || code === "Comma")) {
         e.preventDefault();
         setSettingsOpen(true);
+        return;
+      }
+      // ⌘+ / ⌘- / ⌘0 → global UI zoom. Catch both the shifted plus on
+      // the main keyboard (`=` with Shift) and numpad plus.
+      if (mod && !e.altKey && (code === "Equal" || code === "NumpadAdd")) {
+        e.preventDefault();
+        zoomIn();
+        return;
+      }
+      if (mod && !e.shiftKey && !e.altKey && (code === "Minus" || code === "NumpadSubtract")) {
+        e.preventDefault();
+        zoomOut();
+        return;
+      }
+      if (mod && !e.shiftKey && !e.altKey && (code === "Digit0" || code === "Numpad0")) {
+        e.preventDefault();
+        resetZoom();
         return;
       }
       // ⌘B → toggle left sidebar
@@ -295,5 +315,8 @@ export function useKeyboardShortcuts() {
     toggleRightSidebar,
     setLeftSidebarVisible,
     toggleTerminal,
+    zoomIn,
+    zoomOut,
+    resetZoom,
   ]);
 }

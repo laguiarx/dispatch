@@ -25,6 +25,26 @@ export function applyDensity(density: "compact" | "cozy"): void {
   document.documentElement.setAttribute("data-density", density);
 }
 
+// ---- UI zoom ----
+
+export const UI_ZOOM_MIN = 0.8;
+export const UI_ZOOM_MAX = 1.5;
+export const UI_ZOOM_STEP = 0.1;
+
+export function normalizeUiZoom(value: unknown): number {
+  const raw = typeof value === "number" && Number.isFinite(value) ? value : 1;
+  const stepped = Math.round(raw / UI_ZOOM_STEP) * UI_ZOOM_STEP;
+  const clamped = Math.max(UI_ZOOM_MIN, Math.min(UI_ZOOM_MAX, stepped));
+  return Number(clamped.toFixed(2));
+}
+
+export function applyUiZoom(value: number): void {
+  const zoom = normalizeUiZoom(value);
+  document.documentElement.style.removeProperty("zoom");
+  document.documentElement.style.setProperty("--ui-text-zoom", String(zoom));
+  document.documentElement.setAttribute("data-ui-zoom", String(zoom));
+}
+
 // ---- Fonts ----
 
 export type FontPreset = "inter" | "geist" | "system" | "custom";

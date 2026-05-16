@@ -33,6 +33,7 @@ import {
   applyMonoFont,
   applySansFont,
   applyTheme,
+  applyUiZoom,
 } from "@/lib/theme";
 import { isTauri } from "@/lib/tauri";
 import { useKeyboardShortcuts } from "./keyboard";
@@ -82,12 +83,14 @@ export function App() {
   useEffect(() => {
     applyTheme(settings.theme);
     applyDensity(settings.density);
+    applyUiZoom(settings.uiZoom);
     applySansFont(settings.uiFont, settings.customUiFont);
     applyMonoFont(settings.codeFont, settings.customCodeFont);
     applyCustomColors(settings.customColors);
   }, [
     settings.theme,
     settings.density,
+    settings.uiZoom,
     settings.uiFont,
     settings.codeFont,
     settings.customUiFont,

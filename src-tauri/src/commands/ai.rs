@@ -220,19 +220,19 @@ pub fn detect_integrations() -> AppResult<IntegrationsReport> {
             Some("brew"),
         ),
         (
+            "codex",
+            "Codex CLI",
+            "Powers the AI Assist actions (commit / PR / summary / risk).",
+            "brew install --cask codex",
+            "brew install --cask codex",
+            Some("brew"),
+        ),
+        (
             "claude",
             "Claude Code",
             "Powers the AI Assist actions (commit / PR / summary / risk).",
             "brew install --cask claude-code",
             "brew install --cask claude-code",
-            Some("brew"),
-        ),
-        (
-            "codex",
-            "Codex CLI",
-            "Alternative backend for AI Assist.",
-            "brew install --cask codex",
-            "brew install --cask codex",
             Some("brew"),
         ),
     ];

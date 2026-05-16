@@ -361,11 +361,12 @@
 }
 
 :root {
-  --fs-xs: 11px;
-  --fs-sm: 12px;
-  --fs-md: 13px;
-  --fs-lg: 14px;
-  --fs-xl: 15px;
+  --ui-text-zoom: 1;
+  --fs-xs: calc(11px * var(--ui-text-zoom));
+  --fs-sm: calc(12px * var(--ui-text-zoom));
+  --fs-md: calc(13px * var(--ui-text-zoom));
+  --fs-lg: calc(14px * var(--ui-text-zoom));
+  --fs-xl: calc(15px * var(--ui-text-zoom));
 
   --row-h: 26px;
   --topbar-h: 44px;
@@ -378,7 +379,7 @@
   --radius-3: 8px;
   --radius-4: 12px;
 
-  --editor-line-h: 19px;
+  --editor-line-h: calc(19px * var(--ui-text-zoom));
 }
 :root[data-density="cozy"] {
   --row-h: 30px;
@@ -449,4 +450,40 @@ textarea {
 input::placeholder,
 textarea::placeholder {
   color: var(--fg-3);
+}
+
+/* Text zoom intentionally adjusts font metrics only. Avoid browser/document
+ * zoom here: it scales fixed panels and pushes the app shell out of frame. */
+:root[data-ui-zoom] .text-\[9\.5px\] {
+  font-size: calc(9.5px * var(--ui-text-zoom));
+}
+:root[data-ui-zoom] .text-\[10px\] {
+  font-size: calc(10px * var(--ui-text-zoom));
+}
+:root[data-ui-zoom] .text-\[10\.5px\] {
+  font-size: calc(10.5px * var(--ui-text-zoom));
+}
+:root[data-ui-zoom] .text-\[11px\] {
+  font-size: calc(11px * var(--ui-text-zoom));
+}
+:root[data-ui-zoom] .text-\[11\.5px\] {
+  font-size: calc(11.5px * var(--ui-text-zoom));
+}
+:root[data-ui-zoom] .text-\[12px\] {
+  font-size: calc(12px * var(--ui-text-zoom));
+}
+:root[data-ui-zoom] .text-\[12\.5px\] {
+  font-size: calc(12.5px * var(--ui-text-zoom));
+}
+:root[data-ui-zoom] .text-\[13px\] {
+  font-size: calc(13px * var(--ui-text-zoom));
+}
+:root[data-ui-zoom] .text-\[14px\] {
+  font-size: calc(14px * var(--ui-text-zoom));
+}
+:root[data-ui-zoom] .text-\[15px\] {
+  font-size: calc(15px * var(--ui-text-zoom));
+}
+:root[data-ui-zoom] .text-\[18px\] {
+  font-size: calc(18px * var(--ui-text-zoom));
 }

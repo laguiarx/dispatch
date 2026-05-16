@@ -121,6 +121,15 @@ pub fn build_app_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         MenuItemBuilder::with_id("view:toggle-terminal", "Toggle Terminal")
             .accelerator("CmdOrCtrl+`")
             .build(app)?;
+    let zoom_in = MenuItemBuilder::with_id("view:zoom-in", "Zoom In")
+        .accelerator("CmdOrCtrl+=")
+        .build(app)?;
+    let zoom_out = MenuItemBuilder::with_id("view:zoom-out", "Zoom Out")
+        .accelerator("CmdOrCtrl+-")
+        .build(app)?;
+    let zoom_reset = MenuItemBuilder::with_id("view:zoom-reset", "Actual Size")
+        .accelerator("CmdOrCtrl+0")
+        .build(app)?;
     let cmd_palette =
         MenuItemBuilder::with_id("view:command-palette", "Command Palette…")
             .accelerator("CmdOrCtrl+Shift+P")
@@ -133,6 +142,10 @@ pub fn build_app_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         .item(&toggle_left)
         .item(&toggle_right)
         .item(&toggle_terminal)
+        .separator()
+        .item(&zoom_in)
+        .item(&zoom_out)
+        .item(&zoom_reset)
         .separator()
         .item(&cmd_palette)
         .build()?;

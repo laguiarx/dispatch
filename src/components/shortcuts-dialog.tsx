@@ -79,6 +79,9 @@ const GROUPS: Group[] = [
   {
     title: "Panels",
     shortcuts: [
+      { label: "Zoom in", keys: ["⌘+"] },
+      { label: "Zoom out", keys: ["⌘-"] },
+      { label: "Reset zoom", keys: ["⌘0"] },
       { label: "Toggle left sidebar", keys: ["⌘B"] },
       { label: "Toggle right sidebar", keys: ["⌘⌥B"] },
       { label: "Toggle terminal", keys: ["⌘`"], altKeys: ["⌘J"] },

@@ -38,6 +38,9 @@ import {
   applyMonoFont,
   applySansFont,
   applyTheme,
+  applyUiZoom,
+  normalizeUiZoom,
+  UI_ZOOM_STEP,
   type FontPreset,
   type MonoPreset,
   type Theme,
@@ -288,6 +291,10 @@ type State = {
   setAutoOpenLast: (value: boolean) => void;
   setDiffExpansion: (value: DiffExpansion) => void;
   setSearchView: (value: SearchView) => void;
+  setUiZoom: (value: number) => void;
+  zoomIn: () => void;
+  zoomOut: () => void;
+  resetZoom: () => void;
   setUiFont: (value: FontPreset, custom?: string) => void;
   setCodeFont: (value: MonoPreset, custom?: string) => void;
   setCustomColor: (key: string, value: string | null) => void;
@@ -1001,6 +1008,26 @@ export const useRepoStore = create<State>((set, get) => ({
       return { settings: next };
     });
   },
+  setUiZoom: (uiZoom) => {
+    set((s) => {
+      const nextZoom = normalizeUiZoom(uiZoom);
+      const next = { ...s.settings, uiZoom: nextZoom };
+      writeSettings(next);
+      applyUiZoom(nextZoom);
+      return { settings: next };
+    });
+  },
+  zoomIn: () => {
+    const current = get().settings.uiZoom;
+    get().setUiZoom(current + UI_ZOOM_STEP);
+  },
+  zoomOut: () => {
+    const current = get().settings.uiZoom;
+    get().setUiZoom(current - UI_ZOOM_STEP);
+  },
+  resetZoom: () => {
+    get().setUiZoom(1);
+  },
   setUiFont: (uiFont, custom) => {
     set((s) => {
       const customUiFont = custom ?? s.settings.customUiFont;
@@ -1327,9 +1354,9 @@ export const useRepoStore = create<State>((set, get) => ({
     gitApi.clearDiffCache();
     set({ loading: true, errorMessage: null });
     try {
-      const [rawFiles, currentBranch] = await Promise.all([
+      const [rawFiles, repository] = await Promise.all([
         gitApi.getRepoStatus(repo.path),
-        gitApi.getCurrentBranch(repo.path),
+        repoApi.openRepository(repo.path),
       ]);
       const reviewedPaths = get().reviewedPaths;
       const files = rawFiles.map((f) => ({
@@ -1379,7 +1406,7 @@ export const useRepoStore = create<State>((set, get) => ({
       set({
         files,
         loading: false,
-        repository: { ...repo, currentBranch },
+        repository,
         selectedFilePath: nextSelectedPath,
         selectedFileStaged: nextSelectedStaged,
         openTabs: nextTabs,

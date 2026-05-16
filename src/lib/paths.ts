@@ -25,6 +25,8 @@ export type Settings = {
   autoOpenLast: boolean;
   diffExpansion: DiffExpansion;
   searchView: SearchView;
+  /** Global UI zoom controlled by Cmd/Ctrl +/- shortcuts. */
+  uiZoom: number;
   leftSidebarVisible: boolean;
   rightSidebarVisible: boolean;
   leftSidebarWidth: number;
@@ -83,6 +85,7 @@ const DEFAULT_SETTINGS: Settings = {
   autoOpenLast: true,
   diffExpansion: "hunks",
   searchView: "list",
+  uiZoom: 1,
   leftSidebarVisible: true,
   rightSidebarVisible: true,
   leftSidebarWidth: 280,
@@ -229,6 +232,10 @@ export function readSettings(): Settings {
       autoOpenLast: typeof parsed.autoOpenLast === "boolean" ? parsed.autoOpenLast : true,
       diffExpansion: parsed.diffExpansion === "full" ? "full" : "hunks",
       searchView: parsed.searchView === "tree" ? "tree" : "list",
+      uiZoom:
+        typeof parsed.uiZoom === "number" && Number.isFinite(parsed.uiZoom)
+          ? Math.max(0.8, Math.min(1.5, Math.round(parsed.uiZoom * 10) / 10))
+          : 1,
       leftSidebarVisible:
         typeof parsed.leftSidebarVisible === "boolean"
           ? parsed.leftSidebarVisible
