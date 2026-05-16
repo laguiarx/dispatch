@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRepoStore } from "@/features/repository/repository.store";
 import type { BranchInfo } from "@/features/git/git.types";
+import type { PrSummary } from "@/features/git/git.api";
 import { cn } from "@/lib/utils";
 import { I } from "./icons";
 import { Spinner } from "./spinner";
@@ -11,6 +12,8 @@ export function BranchMenu() {
   const branches = useRepoStore((s) => s.branches);
   const branchesLoading = useRepoStore((s) => s.branchesLoading);
   const fetchBranches = useRepoStore((s) => s.fetchBranches);
+  const branchPrs = useRepoStore((s) => s.branchPrs);
+  const branchPrsLoading = useRepoStore((s) => s.branchPrsLoading);
   const checkoutBranch = useRepoStore((s) => s.checkoutBranch);
   const repository = useRepoStore((s) => s.repository);
   const stashes = useRepoStore((s) => s.stashes);
@@ -258,6 +261,8 @@ export function BranchMenu() {
               <BranchRow
                 key={`local:${b.name}`}
                 branch={b}
+                pr={branchPrs[b.name] ?? null}
+                prLoading={branchPrsLoading}
                 onClick={() => checkoutBranch(b.name)}
                 onDelete={
                   b.isCurrent
@@ -277,6 +282,11 @@ export function BranchMenu() {
               <BranchRow
                 key={`remote:${b.name}`}
                 branch={b}
+                // Remote branches don't carry PR info — PRs are scoped
+                // by HEAD branch (local). Pass null so the row layout
+                // stays consistent without a badge slot.
+                pr={null}
+                prLoading={false}
                 onClick={() => checkoutBranch(b.name)}
                 onDelete={null}
               />
@@ -353,10 +363,16 @@ export function BranchMenu() {
 
 function BranchRow({
   branch,
+  pr,
+  prLoading,
   onClick,
   onDelete,
 }: {
   branch: BranchInfo;
+  /** Open PR opened FROM this branch, if any. Null = no PR or remote row. */
+  pr: PrSummary | null;
+  /** True only on the very first open of the picker before gh has replied. */
+  prLoading: boolean;
   onClick: () => void;
   /** When null the row has no trash button (current branch / remote rows). */
   onDelete: (() => void) | null;
@@ -374,7 +390,10 @@ function BranchRow({
       <button
         type="button"
         className={cn(
-          "grid grid-cols-[16px_1fr_auto_auto] items-center gap-2 px-3 py-1.5",
+          // Five tracks: check · name · PR badge · gone badge · upstream.
+          // PR badge is its own slot so it lines up vertically across all
+          // rows even when individual rows lack a PR or a "gone" marker.
+          "grid grid-cols-[16px_1fr_auto_auto_auto] items-center gap-2 px-3 py-1.5",
           "flex-1 min-w-0 text-left text-fg-1 text-[12px] bg-transparent border-0 cursor-pointer",
           "disabled:cursor-default disabled:text-fg-0",
         )}
@@ -399,6 +418,7 @@ function BranchRow({
         >
           {branch.name}
         </span>
+        <PrBadge pr={pr} loading={prLoading} />
         {branch.gone ? (
           <span
             className="text-[9.5px] uppercase tracking-[0.04em] px-1.5 py-px rounded-full bg-[color-mix(in_oklab,var(--git-del)_22%,transparent)] text-git-del"
@@ -406,7 +426,11 @@ function BranchRow({
           >
             gone
           </span>
-        ) : null}
+        ) : (
+          // Empty span occupies the "gone" grid slot when the badge is
+          // absent so the upstream column lines up across rows.
+          <span aria-hidden="true" />
+        )}
         {branch.upstream ? (
           <span className="font-mono text-fg-2 text-[10.5px] whitespace-nowrap">
             ↳ {branch.upstream}
@@ -415,7 +439,9 @@ function BranchRow({
           <span className="font-mono text-fg-2 text-[10.5px] whitespace-nowrap">
             remote
           </span>
-        ) : null}
+        ) : (
+          <span aria-hidden="true" />
+        )}
       </button>
       {onDelete ? (
         <button
@@ -446,5 +472,126 @@ function BranchRow({
         </button>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * Small "PR #42 ✓ approved" pill rendered inside each local-branch row
+ * once `gh pr list` has returned. Encodes two orthogonal pieces of state:
+ *
+ *   - **Review decision** — the symbol next to the PR number:
+ *       ✓ approved (accent green)
+ *       ⚠ changes requested (warning amber)
+ *       💬 commented (muted)
+ *       … review required / not yet decided (dim)
+ *
+ *   - **CI status** — a tiny color dot AFTER the symbol:
+ *       green = all checks passing
+ *       red   = at least one failing
+ *       amber = pending / in progress
+ *     Absent when the PR has no checks at all.
+ *
+ * Clicking the badge opens the PR in the browser via `<a target="_blank">`
+ * — we don't intercept it because the parent row's checkout-on-click
+ * shouldn't fire for "I want to read the PR thread" intent.
+ */
+function PrBadge({ pr, loading }: { pr: PrSummary | null; loading: boolean }) {
+  if (!pr) {
+    // Grid slot still has to exist so columns line up across rows.
+    // Render a hair-thin placeholder during the initial gh fetch so the
+    // user sees the picker is "still working on it".
+    return loading ? (
+      <span
+        className="text-[9.5px] text-fg-3 font-mono opacity-50"
+        title="Loading PR status…"
+      >
+        …
+      </span>
+    ) : (
+      <span aria-hidden="true" />
+    );
+  }
+
+  const decision = pr.reviewDecision;
+  const symbol =
+    decision === "APPROVED"
+      ? "✓"
+      : decision === "CHANGES_REQUESTED"
+        ? "⚠"
+        : decision === "COMMENTED"
+          ? "💬"
+          : "…"; // REVIEW_REQUIRED or empty
+  const decisionColor =
+    decision === "APPROVED"
+      ? "text-git-add"
+      : decision === "CHANGES_REQUESTED"
+        ? "text-git-mod"
+        : "text-fg-2";
+  const decisionLabel =
+    decision === "APPROVED"
+      ? "Approved"
+      : decision === "CHANGES_REQUESTED"
+        ? "Changes requested"
+        : decision === "COMMENTED"
+          ? "Commented"
+          : "Review requested";
+
+  const ciDot =
+    pr.checkStatus === "SUCCESS"
+      ? "bg-git-add"
+      : pr.checkStatus === "FAILURE"
+        ? "bg-git-del"
+        : pr.checkStatus === "PENDING"
+          ? "bg-git-mod"
+          : null;
+  const ciLabel =
+    pr.checkStatus === "SUCCESS"
+      ? "All checks passed"
+      : pr.checkStatus === "FAILURE"
+        ? "Failing checks"
+        : pr.checkStatus === "PENDING"
+          ? "Checks running"
+          : "No CI";
+
+  const fullTitle = [
+    `PR #${pr.number}`,
+    decisionLabel,
+    pr.commentCount > 0
+      ? `${pr.commentCount} comment${pr.commentCount === 1 ? "" : "s"}`
+      : null,
+    pr.checkStatus ? ciLabel : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <a
+      href={pr.url}
+      target="_blank"
+      rel="noreferrer"
+      // Pill mimics the "gone" badge metrics so adjacent rows line up.
+      className={cn(
+        "inline-flex items-center gap-1 px-1.5 py-px rounded-full",
+        "text-[9.5px] font-mono no-underline",
+        "bg-bg-3 border border-bd-1 text-fg-1",
+        "hover:border-bd-2 hover:bg-bg-4",
+      )}
+      // Don't trigger the row's checkout-on-click — opening the PR is a
+      // different intent.
+      onClick={(e) => e.stopPropagation()}
+      title={fullTitle}
+    >
+      <span className={decisionColor}>{symbol}</span>
+      <span>#{pr.number}</span>
+      {ciDot ? (
+        <span
+          aria-hidden="true"
+          className={cn("w-1.5 h-1.5 rounded-full", ciDot)}
+        />
+      ) : null}
+      {pr.commentCount > 0 ? (
+        <span className="text-fg-3">💬{pr.commentCount}</span>
+      ) : null}
+    </a>
   );
 }

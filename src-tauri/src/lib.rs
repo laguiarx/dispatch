@@ -95,6 +95,7 @@ pub fn run() {
             commands::git::git_merge_into,
             commands::gh::gh_detect_status,
             commands::gh::gh_pr_create,
+            commands::gh::gh_pr_list,
             commands::git::list_branches,
             commands::git::git_delete_branch,
             commands::git::checkout_branch,

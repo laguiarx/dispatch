@@ -39,7 +39,16 @@ bun run tauri:dev
 ```
 
 The first launch compiles Rust (a few minutes). Frontend hot-reload is instant
-afterward.
+afterward. The default dev command disables Tauri's Rust file watcher so Squint
+can safely review or merge changes in its own repository without restarting the
+desktop app.
+
+When actively editing Rust/Tauri code and you want backend rebuilds on file
+changes, run:
+
+```sh
+bun run tauri:dev:watch
+```
 
 Release bundle:
 
