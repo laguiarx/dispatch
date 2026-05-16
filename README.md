@@ -56,6 +56,13 @@ Release bundle:
 bun run tauri:build
 ```
 
+Auto-updates are wired through Tauri's updater plugin and GitHub Releases. Keep
+the private signing key out of the repo, expose it to CI as
+`TAURI_SIGNING_PRIVATE_KEY`, build with `bun run tauri:build`, then upload the
+generated installers plus `latest.json` to a GitHub Release. Packaged apps check
+`https://github.com/laguiarx/squint/releases/latest/download/latest.json`.
+See `docs/releasing.md` for the exact GitHub setup and release checklist.
+
 ## Project layout
 
 ```

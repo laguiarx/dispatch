@@ -1,4 +1,6 @@
 import { create } from "zustand";
+import { relaunch } from "@tauri-apps/plugin-process";
+import { check, type Update } from "@tauri-apps/plugin-updater";
 import type { Repository } from "./repository.types";
 import type {
   BranchInfo,
@@ -45,6 +47,7 @@ import {
   type MonoPreset,
   type Theme,
 } from "@/lib/theme";
+import { isTauri } from "@/lib/tauri";
 
 export type StatusFilter =
   | "all"
@@ -53,6 +56,23 @@ export type StatusFilter =
 export type SidebarTab = "changes" | "files" | "search";
 
 export type DiffMode = "sbs" | "inline" | "edit";
+
+export type UpdaterStatus =
+  | "idle"
+  | "checking"
+  | "unavailable"
+  | "available"
+  | "downloading"
+  | "ready"
+  | "error";
+
+export type UpdateInfo = {
+  version: string;
+  currentVersion: string;
+  body?: string;
+};
+
+let pendingUpdate: Update | null = null;
 
 /**
  * One open tab in the diff pane. `staged` mirrors `selectedFileStaged` —
@@ -277,6 +297,10 @@ type State = {
   errorMessage: string | null;
   confirm: ConfirmRequest | null;
   toasts: ToastMessage[];
+  updaterStatus: UpdaterStatus;
+  updateInfo: UpdateInfo | null;
+  updateProgress: number | null;
+  updateError: string | null;
 
   recentRepos: RecentRepo[];
   settings: Settings;
@@ -344,6 +368,8 @@ type State = {
   setOnboardingOpen: (open: boolean) => void;
   setRepoMenuOpen: (open: boolean) => void;
   forgetRecent: (path: string) => void;
+  checkForUpdate: (silent?: boolean) => Promise<void>;
+  installUpdate: () => Promise<void>;
   openRepositoryFromPath: (path: string) => Promise<void>;
   openRepositoryPicker: () => Promise<void>;
   closeRepository: () => void;
@@ -963,6 +989,10 @@ export const useRepoStore = create<State>((set, get) => ({
   errorMessage: null,
   confirm: null,
   toasts: [],
+  updaterStatus: "idle",
+  updateInfo: null,
+  updateProgress: null,
+  updateError: null,
 
   recentRepos: readRecentRepos(),
   settings: readSettings(),
@@ -1224,6 +1254,98 @@ export const useRepoStore = create<State>((set, get) => ({
   setRepoMenuOpen: (repoMenuOpen) => set({ repoMenuOpen }),
   forgetRecent: (path) => {
     set({ recentRepos: removeRecentRepo(path) });
+  },
+  checkForUpdate: async (silent = false) => {
+    if (!isTauri()) {
+      if (!silent) {
+        get().pushToast("Updates are available in the packaged app.");
+      }
+      return;
+    }
+    const state = get();
+    if (
+      state.updaterStatus === "checking" ||
+      state.updaterStatus === "downloading"
+    ) {
+      return;
+    }
+    set({
+      updaterStatus: "checking",
+      updateError: null,
+      updateProgress: null,
+    });
+    try {
+      const update = await check();
+      pendingUpdate = update;
+      if (!update) {
+        set({
+          updaterStatus: "unavailable",
+          updateInfo: null,
+          updateProgress: null,
+        });
+        if (!silent) get().pushToast("Squint is up to date");
+        return;
+      }
+      set({
+        updaterStatus: "available",
+        updateInfo: {
+          version: update.version,
+          currentVersion: update.currentVersion,
+          body: update.body,
+        },
+        updateProgress: null,
+      });
+      get().pushToast(`Update ${update.version} available`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      pendingUpdate = null;
+      set({
+        updaterStatus: silent ? "idle" : "error",
+        updateError: message,
+        updateProgress: null,
+      });
+      if (!silent) {
+        get().pushToast(`Update check failed: ${message}`, "danger");
+      }
+    }
+  },
+  installUpdate: async () => {
+    if (!isTauri()) return;
+    if (get().updaterStatus === "downloading") return;
+
+    let update = pendingUpdate;
+    if (!update) {
+      await get().checkForUpdate();
+      update = pendingUpdate;
+    }
+    if (!update) return;
+
+    let downloaded = 0;
+    let total: number | null = null;
+    set({ updaterStatus: "downloading", updateError: null, updateProgress: 0 });
+    try {
+      await update.downloadAndInstall((event) => {
+        if (event.event === "Started") {
+          total = event.data.contentLength ?? null;
+          downloaded = 0;
+          set({ updateProgress: total ? 0 : null });
+        } else if (event.event === "Progress") {
+          downloaded += event.data.chunkLength;
+          if (total && total > 0) {
+            set({ updateProgress: Math.min(1, downloaded / total) });
+          }
+        } else if (event.event === "Finished") {
+          set({ updateProgress: 1 });
+        }
+      });
+      set({ updaterStatus: "ready", updateProgress: 1 });
+      get().pushToast("Update installed. Relaunching...");
+      await relaunch();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      set({ updaterStatus: "error", updateError: message });
+      get().pushToast(`Update failed: ${message}`, "danger");
+    }
   },
 
   setError: (errorMessage) => set({ errorMessage }),

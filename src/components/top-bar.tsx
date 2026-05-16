@@ -1,9 +1,14 @@
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { useRepoStore } from "@/features/repository/repository.store";
+import {
+  useRepoStore,
+  type UpdateInfo,
+  type UpdaterStatus,
+} from "@/features/repository/repository.store";
 import { cn } from "@/lib/utils";
 import { isTauri } from "@/lib/tauri";
 import { I } from "./icons";
 import { IconBtn } from "./icon-btn";
+import { Spinner } from "./spinner";
 import { RepoMenu } from "./repo-menu";
 import { BranchMenu } from "./branch-menu";
 import { EditorMenu } from "./editor-menu";
@@ -101,6 +106,11 @@ export function TopBar() {
   const prBranchChoiceOpen = useRepoStore((s) => s.prBranchChoiceOpen);
   const openPrBranchChoice = useRepoStore((s) => s.openPrBranchChoice);
   const closePrBranchChoice = useRepoStore((s) => s.closePrBranchChoice);
+  const updaterStatus = useRepoStore((s) => s.updaterStatus);
+  const updateInfo = useRepoStore((s) => s.updateInfo);
+  const updateProgress = useRepoStore((s) => s.updateProgress);
+  const checkForUpdate = useRepoStore((s) => s.checkForUpdate);
+  const installUpdate = useRepoStore((s) => s.installUpdate);
 
   return (
     <header
@@ -203,6 +213,17 @@ export function TopBar() {
         data-tauri-drag-region
         className="flex items-center gap-1.5"
       >
+        <UpdateButton
+          status={updaterStatus}
+          info={updateInfo}
+          progress={updateProgress}
+          onCheck={() => {
+            void checkForUpdate();
+          }}
+          onInstall={() => {
+            void installUpdate();
+          }}
+        />
         <EditorLauncher
           disabled={!repository}
           menuOpen={editorMenuOpen}
@@ -239,6 +260,51 @@ export function TopBar() {
         </IconBtn>
       </div>
     </header>
+  );
+}
+
+function UpdateButton({
+  status,
+  info,
+  progress,
+  onCheck,
+  onInstall,
+}: {
+  status: UpdaterStatus;
+  info: UpdateInfo | null;
+  progress: number | null;
+  onCheck: () => void;
+  onInstall: () => void;
+}) {
+  const checking = status === "checking";
+  const downloading = status === "downloading";
+  const available = status === "available";
+  const ready = status === "ready";
+  const percent =
+    progress == null
+      ? null
+      : Math.max(0, Math.min(100, Math.round(progress * 100)));
+  const title = downloading
+    ? `Downloading update${percent == null ? "" : ` (${percent}%)`}`
+    : checking
+      ? "Checking for updates..."
+      : available
+        ? `Install update ${info?.version ?? ""}`.trim()
+        : ready
+          ? "Relaunch to finish update"
+          : status === "error"
+            ? "Update check failed — click to retry"
+            : "Check for updates";
+
+  return (
+    <IconBtn
+      title={title}
+      onClick={available || ready ? onInstall : onCheck}
+      active={available || ready || checking || downloading}
+      disabled={checking || downloading}
+    >
+      {checking || downloading ? <Spinner className="h-3 w-3" /> : I.download}
+    </IconBtn>
   );
 }
 

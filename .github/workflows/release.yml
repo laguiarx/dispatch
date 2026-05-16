@@ -11,7 +11,7 @@
 #
 # Trigger this with:
 #   git tag v0.2.0 && git push origin v0.2.0
-# Or fire it manually from the Actions tab (workflow_dispatch).
+# Or fire it manually from the Actions tab with a `v*` tag name.
 
 name: release
 
@@ -19,7 +19,12 @@ on:
   push:
     tags:
       - "v*"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, for example v0.2.0"
+        required: true
+        type: string
 
 jobs:
   build:
@@ -64,10 +69,7 @@ jobs:
         with:
           workspaces: "./src-tauri -> target"
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
+      - uses: oven-sh/setup-bun@v2
 
       # ----- Linux-only system deps -----
       # GTK / webkit2gtk / libsoup pull in a tree of headers; the Tauri
@@ -86,7 +88,7 @@ jobs:
 
       # ----- frontend build -----
       - name: Install JS deps
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       # ----- Tauri bundle -----
       # `tauri-apps/tauri-action` runs `cargo tauri build` and uploads
@@ -96,6 +98,8 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           # Apple notarization + signing — uncomment + add the matching
           # repository secrets if you want signed/notarized macOS builds.
           # APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
@@ -105,11 +109,14 @@ jobs:
           # APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: "Squint ${{ github.ref_name }}"
+          tagName: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          releaseName: "Squint ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}"
           releaseBody: |
-            Auto-built from the `${{ github.ref_name }}` tag.
+            Auto-built from the `${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}` tag.
             macOS, Windows, and Linux artefacts attached below.
           releaseDraft: true
           prerelease: false
+          includeUpdaterJson: true
+          updaterJsonPreferNsis: true
+          tauriScript: bun tauri
           args: ${{ matrix.args }}

@@ -37,7 +37,8 @@ export type IconName =
   | "splitView"
   | "inlineView"
   | "fileFull"
-  | "fileHunks";
+  | "fileHunks"
+  | "download";
 
 export const I: Record<IconName, ReactElement> = {
   refresh: (
@@ -47,6 +48,18 @@ export const I: Record<IconName, ReactElement> = {
         fill="none"
         stroke="currentColor"
         strokeWidth="1.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  download: (
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+      <path
+        d="M8 2.5v7M5 6.8 8 9.8l3-3M3 12.5h10"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.25"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
