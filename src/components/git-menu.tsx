@@ -3,31 +3,38 @@ import { createPortal } from "react-dom";
 import { useRepoStore } from "@/features/repository/repository.store";
 import { cn } from "@/lib/utils";
 
-type Anchor = { top: number; right: number };
+type Anchor = { top: number; left: number };
 
 /**
- * Read the trigger's viewport-relative position so the portal-mounted menu
- * can sit just under the topbar button regardless of any ancestor stacking
- * contexts / overflow / transforms. Mirrors `EditorMenu`'s anchor logic.
+ * Read the chevron's viewport-relative position so the portal-mounted
+ * menu can sit just under the PR launcher regardless of any ancestor
+ * stacking contexts / overflow / transforms.
  */
 function computeAnchor(): Anchor {
-  const trigger = document.querySelector<HTMLElement>("[data-git-menu-trigger]");
-  if (!trigger) return { top: 60, right: 16 };
+  const trigger = document.querySelector<HTMLElement>(
+    "[data-pr-launcher-trigger]",
+  );
+  if (!trigger) return { top: 60, left: 16 };
   const rect = trigger.getBoundingClientRect();
+  // 320px is the card's max-width — clamp the left edge so the menu
+  // doesn't extend past the right edge of the window when the launcher
+  // sits near the middle of the topbar.
   return {
     top: rect.bottom + 6,
-    right: Math.max(8, window.innerWidth - rect.right),
+    left: Math.max(
+      8,
+      Math.min(rect.left, window.innerWidth - 320 - 8),
+    ),
   };
 }
 
 // "Generate commit message" lives in the Changes-tab composer in the
-// sidebar now — it operates on the staged diff and feeds a real textarea
-// the user can edit before committing, which doesn't fit a global menu.
+// sidebar — it operates on the staged diff and feeds a real textarea the
+// user can edit before committing, which doesn't fit a global menu.
 //
-// Items here are split in two:
-//   - `pr-create`: a real action (branch → commit → push → gh pr create),
-//     handled specially in the click callback.
-//   - `summary` / `risk`: read-only AI text actions that open the modal.
+// "Create Pull Request" used to live here too but moved to the main half
+// of the PR launcher split-button — the chevron is what opens this menu,
+// so the items here are just the read-only AI text actions.
 const READ_ONLY_ACTIONS = [
   {
     kind: "summary" as const,
@@ -42,20 +49,19 @@ const READ_ONLY_ACTIONS = [
 ];
 
 /**
- * Global Git/AI dropdown shown in the topbar. The four actions all act on
- * the WHOLE working tree (or whole branch for PR), not on the currently
- * selected file — they're inherently repo-scoped, so they live up here
- * rather than in the per-file right panel.
+ * AI Assist dropdown anchored to the chevron half of the PR launcher
+ * split-button in the topbar. Both actions are read-only AI text passes
+ * over the working-tree / branch diff — they open the centered output
+ * modal rather than performing a git operation.
  */
 export function GitMenu() {
   const open = useRepoStore((s) => s.gitMenuOpen);
   const setOpen = useRepoStore((s) => s.setGitMenuOpen);
   const aiKind = useRepoStore((s) => s.aiKind);
   const setAiKind = useRepoStore((s) => s.setAiKind);
-  const openPrBranchChoice = useRepoStore((s) => s.openPrBranchChoice);
 
   const ref = useRef<HTMLDivElement | null>(null);
-  const [anchor, setAnchor] = useState<Anchor>({ top: 60, right: 16 });
+  const [anchor, setAnchor] = useState<Anchor>({ top: 60, left: 16 });
 
   useLayoutEffect(() => {
     if (!open) return;
@@ -74,9 +80,9 @@ export function GitMenu() {
     function onDocClick(e: MouseEvent) {
       const target = e.target as Node | null;
       if (ref.current && target && !ref.current.contains(target)) {
-        // The trigger button itself owns toggling — don't double-close
-        // when the user clicks it to dismiss the menu.
-        const trigger = document.querySelector("[data-git-menu-trigger]");
+        // The chevron trigger owns toggling — don't double-close when the
+        // user clicks it to dismiss the menu.
+        const trigger = document.querySelector("[data-pr-launcher-trigger]");
         if (trigger && trigger.contains(target)) return;
         setOpen(false);
       }
@@ -113,28 +119,8 @@ export function GitMenu() {
     <div
       ref={ref}
       className={cardShell}
-      style={{ top: anchor.top, right: anchor.right }}
+      style={{ top: anchor.top, left: anchor.left }}
     >
-      <div className={sectionHead}>Git · Actions</div>
-      {/* Real action: stages → commits → pushes → opens the PR via gh. */}
-      <button
-        key="pr-create"
-        // Primary item gets the accent applied to its label (the row
-        // background stays transparent until hover, same as other items).
-        className={cn(itemBase, "[&_.git-menu-label]:text-accent")}
-        onClick={() => {
-          openPrBranchChoice();
-          setOpen(false);
-        }}
-        type="button"
-      >
-        <span className="git-menu-label font-medium">Create Pull Request</span>
-        <span className="text-fg-2 text-[10.5px] leading-[1.4]">
-          Branch · commit · push · open PR on GitHub.
-        </span>
-      </button>
-
-      <div className="h-px mx-0 my-1 bg-bd-0" />
       <div className={sectionHead}>AI Assist</div>
       {READ_ONLY_ACTIONS.map((a) => (
         <button

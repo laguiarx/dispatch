@@ -24,24 +24,31 @@ const POPOVER_CLOSE =
   "p-0.5 bg-transparent border-0 text-fg-3 cursor-pointer hover:text-fg-0 " +
   "disabled:opacity-40 disabled:cursor-not-allowed";
 
-type Anchor = { top: number; right: number };
+type Anchor = { top: number; left: number };
 
 function computeAnchor(): Anchor {
-  const trigger = document.querySelector<HTMLElement>("[data-git-menu-trigger]");
-  if (!trigger) return { top: 60, right: 16 };
+  const trigger = document.querySelector<HTMLElement>(
+    "[data-pr-create-trigger]",
+  );
+  if (!trigger) return { top: 60, left: 16 };
   const rect = trigger.getBoundingClientRect();
   return {
     top: rect.bottom + 6,
-    right: Math.max(8, window.innerWidth - rect.right),
+    // Drop straight beneath the trigger; clamp so the 420px card never
+    // overflows past the right edge of the window.
+    left: Math.max(
+      8,
+      Math.min(rect.left, window.innerWidth - 420 - 8),
+    ),
   };
 }
 
 /**
- * Progress card for the `createPr` pipeline. Anchored to the Git pill in
- * the topbar (same positioning logic as GitMenu) instead of a centered
- * modal — feels like an extension of the menu that opened it, not a
- * separate full-screen interrupt. Stays open during running / done /
- * error states; idle = invisible.
+ * Progress card for the `createPr` pipeline. Anchored beneath the
+ * "Create PR" split-button in the topbar (same positioning logic as
+ * GitMenu) instead of a centered modal — feels like an extension of the
+ * button that triggered it, not a separate full-screen interrupt. Stays
+ * open during running / done / error states; idle = invisible.
  *
  * Migrated from `.pr-flow-*` rules.
  */
@@ -49,7 +56,7 @@ export function PrFlowDialog() {
   const flow = useRepoStore((s) => s.prFlow);
   const reset = useRepoStore((s) => s.resetPrFlow);
   const ref = useRef<HTMLDivElement | null>(null);
-  const [anchor, setAnchor] = useState<Anchor>({ top: 60, right: 16 });
+  const [anchor, setAnchor] = useState<Anchor>({ top: 60, left: 16 });
 
   useLayoutEffect(() => {
     if (flow.state === "idle") return;
@@ -80,7 +87,7 @@ export function PrFlowDialog() {
     <div
       ref={ref}
       className={POPOVER_SHELL}
-      style={{ top: anchor.top, right: anchor.right }}
+      style={{ top: anchor.top, left: anchor.left }}
       role="dialog"
       aria-label="Create Pull Request"
     >
@@ -130,7 +137,7 @@ export function PrFlowDialog() {
                 className={cn(
                   "block px-2.5 py-2 bg-bg-0 border border-bd-1 rounded-2",
                   "font-mono text-[11.5px] text-accent no-underline break-all",
-                  "hover:border-accent",
+                  "hover:border-accent select-text",
                 )}
               >
                 {flow.url}
@@ -161,6 +168,7 @@ export function PrFlowDialog() {
               className={cn(
                 "px-2.5 py-2 bg-bg-0 border border-bd-1 rounded-2",
                 "font-mono text-[11.5px] text-fg-1 whitespace-pre-wrap break-words",
+                "select-text",
               )}
             >
               {flow.error}

@@ -177,6 +177,24 @@ export function App() {
     openRepositoryFromPath,
   ]);
 
+  // Auto-sync with the remote whenever the window regains focus (the user
+  // came back from the browser / terminal / GitHub / etc). The store
+  // throttles repeated calls so alt-tabbing twice in a second doesn't
+  // hammer the remote. Silent on success; toasts only when the current
+  // branch's upstream becomes `gone` (PR merged + branch deleted).
+  const gitAutoSync = useRepoStore((s) => s.gitAutoSync);
+  useEffect(() => {
+    if (!repository) return;
+    const onFocus = () => {
+      void gitAutoSync();
+    };
+    window.addEventListener("focus", onFocus);
+    // Also run once on mount / when a repo first opens so the first paint
+    // already reflects remote state (no wait until you alt-tab away).
+    void gitAutoSync();
+    return () => window.removeEventListener("focus", onFocus);
+  }, [repository?.path, gitAutoSync]);
+
   // Build command palette items
   const files = useRepoStore((s) => s.files);
   const selectedFilePath = useRepoStore((s) => s.selectedFilePath);

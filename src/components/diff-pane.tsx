@@ -46,7 +46,10 @@ const DIFF_HEADER =
 
 const DIFF_BODY_WRAP = "relative flex flex-col flex-1 min-h-0";
 const DIFF_BODY =
-  "flex-1 overflow-auto bg-bg-0 " +
+  // `select-text` opts back in to text selection — the body sets
+  // `user-select: none` globally so menus / tabs / sidebar items don't
+  // accidentally highlight, but the code in the editor obviously should.
+  "flex-1 overflow-auto bg-bg-0 select-text " +
   "[scrollbar-width:thin] [scrollbar-color:var(--bd-2)_transparent] " +
   "[&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar]:h-2.5 " +
   "[&::-webkit-scrollbar-thumb]:bg-bd-2 [&::-webkit-scrollbar-thumb]:rounded-[5px] " +

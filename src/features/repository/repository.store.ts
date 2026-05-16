@@ -412,6 +412,12 @@ type State = {
   gitPull: () => Promise<void>;
   /** `git fetch --all --prune`. */
   gitFetchRemote: () => Promise<void>;
+  /** Background-friendly fetch fired on window focus. Silent on success,
+   *  refreshes the branch list + working tree, and toasts (once) when the
+   *  current branch's upstream becomes `gone` (PR merged + branch deleted
+   *  on the remote). Throttled — repeated calls within `AUTO_SYNC_MS` are
+   *  no-ops so alt-tabbing doesn't hammer the remote. */
+  gitAutoSync: () => Promise<void>;
   /** `git reset --soft HEAD~1` — keeps the changes staged so the user can
    *  re-edit the message in the composer and commit again. */
   gitUndoLastCommit: () => Promise<void>;
@@ -692,6 +698,17 @@ async function buildPromptForKind(
   }
 }
 
+
+// ----- background auto-sync state -------------------------------------------
+// Kept at module scope (not in the store) because these are purely ephemeral
+// concerns — they reset on app reload and never need to participate in
+// re-renders. `AUTO_SYNC_MS` is the throttle window; alt-tabbing twice in
+// quick succession should NOT trigger two `git fetch` calls.
+const AUTO_SYNC_MS = 30_000;
+let lastAutoSyncAt = 0;
+// Branches we've already told the user about since boot, so the "your
+// branch was deleted on remote" toast doesn't repeat on every focus.
+const notifiedGoneBranches = new Set<string>();
 
 export const useRepoStore = create<State>((set, get) => ({
   repository: null,
@@ -1937,10 +1954,48 @@ export const useRepoStore = create<State>((set, get) => ({
       await gitApi.fetchRemote(state.repository.path);
       get().pushToast("Fetched");
       await get().refresh();
+      await get().fetchBranches();
     } catch (err) {
       set({ errorMessage: err instanceof Error ? err.message : String(err) });
     } finally {
       set({ gitOpLoading: null });
+    }
+  },
+
+  gitAutoSync: async () => {
+    const state = get();
+    if (!state.repository) return;
+    // Don't compete with an in-flight user-initiated op — the foreground
+    // action will refresh on its own.
+    if (state.gitOpLoading != null) return;
+    const now = Date.now();
+    if (now - lastAutoSyncAt < AUTO_SYNC_MS) return;
+    lastAutoSyncAt = now;
+    try {
+      await gitApi.fetchRemote(state.repository.path);
+      // Order matters: refresh the working tree first (cheap, no network)
+      // then re-list branches so the "gone" badge reflects fresh upstream
+      // tracking info from the fetch we just did.
+      await get().refresh();
+      await get().fetchBranches();
+      // If the user's current branch had its upstream deleted on the
+      // remote (almost always: the PR was merged + branch deleted on
+      // GitHub), surface that exactly once per branch-per-session.
+      const cur = get().repository?.currentBranch;
+      if (!cur) return;
+      const info = get().branches.find(
+        (b) => b.name === cur && !b.isRemote,
+      );
+      if (info?.gone && !notifiedGoneBranches.has(cur)) {
+        notifiedGoneBranches.add(cur);
+        get().pushToast(
+          `'${cur}' was deleted on remote — likely merged. Switch branches when ready.`,
+        );
+      }
+    } catch {
+      // Silent on failure — this is a best-effort background sync. If the
+      // network is down or the remote auth expired, the user will see the
+      // error the next time they explicitly fetch / push / pull.
     }
   },
 

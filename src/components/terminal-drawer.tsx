@@ -32,7 +32,10 @@ const ICON_BTN =
 // drawer's translucent card shows through, and make the canvas fill the
 // host so it doesn't bleed past the rounded corner.
 const HOST =
-  "flex-1 min-h-0 px-2 pt-1.5 bg-bg-0 " +
+  // `select-text` so the user can copy terminal output — the body sets
+  // `user-select: none` globally, otherwise mouse-drag in xterm wouldn't
+  // highlight anything.
+  "flex-1 min-h-0 px-2 pt-1.5 bg-bg-0 select-text " +
   "[&_.xterm]:h-full " +
   "[&_.xterm-viewport]:!bg-transparent";
 import {
