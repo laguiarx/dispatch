@@ -101,6 +101,7 @@ export function App() {
   // Show the welcome tour on first launch.
   const setOnboardingOpen = useRepoStore((s) => s.setOnboardingOpen);
   const fetchAiClis = useRepoStore((s) => s.fetchAiClis);
+  const checkForUpdate = useRepoStore((s) => s.checkForUpdate);
   useEffect(() => {
     if (!settings.firstRunCompleted) {
       setOnboardingOpen(true);
@@ -111,6 +112,11 @@ export function App() {
     fetchAiClis().catch(() => {
       /* non-fatal */
     });
+    if (isTauri()) {
+      checkForUpdate(true).catch(() => {
+        /* non-fatal */
+      });
+    }
     // Only on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
