@@ -191,6 +191,27 @@ type State = {
   };
   /** Open the "Branch choice" dialog before running `createPr`. */
   prBranchChoiceOpen: boolean;
+  /**
+   * Live state for the Create PR dialog. Separated from `prFlow` because
+   * it lives BEFORE the pipeline kicks off — driving the dialog body's
+   * "Into" picker, the behind/ahead readout, and the rebase/merge
+   * affordance. Reset to defaults every time the dialog opens.
+   */
+  prDialog: {
+    /** Remote branches available as PR base (sorted, default branch first). */
+    bases: string[];
+    /** Currently selected base. Null while we boot the dialog state. */
+    base: string | null;
+    /** `git rev-list --count base...head` — populated by loadPrDialogStatus. */
+    behind: number;
+    ahead: number;
+    /** True while behindAhead / remoteBranches RPCs are in flight. */
+    statusLoading: boolean;
+    /** User clicked "Skip" on the behind-warning; unblocks Create PR. */
+    ignoreBehind: boolean;
+    /** Last sync error surfaced inline (rebase/merge conflict, etc). */
+    statusError: string | null;
+  };
   repoFiles: string[];
   repoFilesLoading: boolean;
   branches: BranchInfo[];
@@ -425,6 +446,20 @@ type State = {
   openPrBranchChoice: () => void;
   /** Close the branch-choice dialog without starting anything. */
   closePrBranchChoice: () => void;
+  /** Set the PR base picked by the user (the branch the PR will merge into). */
+  setPrDialogBase: (base: string) => void;
+  /**
+   * Recompute behind/ahead between the head branch and the chosen base
+   * (`prDialog.base`). Called when the dialog opens and after each
+   * rebase/merge so the warning banner stays in sync.
+   */
+  refreshPrDialogStatus: () => Promise<void>;
+  /** `git rebase origin/<base>` from inside the Create PR dialog. */
+  prDialogRebase: () => Promise<void>;
+  /** `git merge --no-edit origin/<base>` from inside the Create PR dialog. */
+  prDialogMerge: () => Promise<void>;
+  /** Dismiss the "behind" warning so the Create PR button unlocks. */
+  prDialogSkipBehind: () => void;
   /** Reset the PR-flow modal back to idle (and clear url/error). */
   resetPrFlow: () => void;
   /**
@@ -433,13 +468,17 @@ type State = {
    *   - commit any uncommitted changes (AI-generated message if textarea empty)
    *   - push (with -u when needed)
    *   - generate PR title + body via AI
-   *   - call `gh pr create` against the repo's default branch
+   *   - call `gh pr create` against the chosen `baseBranch`
    *   - stream human-readable progress into `prFlow.message`
    *
    * `newBranchName` is supplied by the dialog when the user picks "Create
-   * new branch"; pass null to use the current branch as-is.
+   * new branch"; pass null to use the current branch as-is. `baseBranch`
+   * is the user-chosen PR target (defaults to the dialog's resolved base).
    */
-  createPr: (opts: { newBranchName: string | null }) => Promise<void>;
+  createPr: (opts: {
+    newBranchName: string | null;
+    baseBranch: string;
+  }) => Promise<void>;
   /** Flip the onboarding flag (used by the first-run modal). */
   setFirstRunCompleted: (v: boolean) => void;
 
@@ -621,6 +660,30 @@ async function resolveAvailableCli(
 }
 
 /**
+ * Both Claude Code and Codex sometimes wrap their response in a fenced
+ * code block — typically ```markdown ... ``` for PR descriptions — even
+ * when the prompt asks for plain text. When that happens the literal
+ * fence line becomes the first non-empty line of the output, which the
+ * PR-title parser then takes as the title (producing PRs literally named
+ * ` ```markdown `).
+ *
+ * This strips a *full-output* outer fence (open on line 1, close on the
+ * last non-empty line) and returns the inner content. If the output
+ * isn't fence-wrapped, returns it unchanged. Inner code blocks in the
+ * body are preserved — we only peel one layer.
+ */
+function stripOuterCodeFence(raw: string): string {
+  const lines = raw.split(/\r?\n/);
+  if (lines.length < 2) return raw;
+  const opener = lines[0].trim();
+  if (!/^```[a-zA-Z0-9_+-]*$/.test(opener)) return raw;
+  let lastIdx = lines.length - 1;
+  while (lastIdx > 0 && lines[lastIdx].trim() === "") lastIdx--;
+  if (lastIdx <= 0 || lines[lastIdx].trim() !== "```") return raw;
+  return lines.slice(1, lastIdx).join("\n");
+}
+
+/**
  * Compose the prompt sent to the user's AI CLI for a given action. Kept on
  * the renderer side (vs the Rust layer) so we can iterate on wording without
  * recompiling the backend.
@@ -756,6 +819,15 @@ export const useRepoStore = create<State>((set, get) => ({
   gitOpLoading: null,
   prFlow: { state: "idle", message: "", url: null, error: null },
   prBranchChoiceOpen: false,
+  prDialog: {
+    bases: [],
+    base: null,
+    behind: 0,
+    ahead: 0,
+    statusLoading: false,
+    ignoreBehind: false,
+    statusError: null,
+  },
   repoFiles: [],
   repoFilesLoading: false,
   branches: [],
@@ -901,7 +973,9 @@ export const useRepoStore = create<State>((set, get) => ({
       ]
         .filter((x): x is string => x !== null)
         .join("\n");
-      const raw = await aiApi.runAiCli(cli.id, prompt, repoPath);
+      const raw = stripOuterCodeFence(
+        (await aiApi.runAiCli(cli.id, prompt, repoPath)).trim(),
+      );
       // Trust but verify: strip surrounding whitespace, drop trailing
       // punctuation, take the first line.
       const first = raw.trim().split("\n")[0] ?? "";
@@ -2014,17 +2088,170 @@ export const useRepoStore = create<State>((set, get) => ({
     }
   },
 
-  openPrBranchChoice: () => set({ prBranchChoiceOpen: true }),
+  openPrBranchChoice: () => {
+    const state = get();
+    if (!state.repository) return;
+    const repoPath = state.repository.path;
+    // Show the dialog immediately with a "loading" baseline so the user
+    // never sees an empty card. Bases / behind-ahead come in async.
+    set({
+      prBranchChoiceOpen: true,
+      prDialog: {
+        bases: [],
+        base: null,
+        behind: 0,
+        ahead: 0,
+        statusLoading: true,
+        ignoreBehind: false,
+        statusError: null,
+      },
+    });
+    (async () => {
+      try {
+        // List of remote branches comes first because we need it to pick
+        // the dropdown default (last-used > origin/HEAD > first remote).
+        const [bases, fallback] = await Promise.all([
+          gitApi.remoteBranches(repoPath),
+          gitApi.defaultBranch(repoPath).catch(() => null),
+        ]);
+        const remembered = get().settings.lastPrBaseByRepo[repoPath];
+        const base =
+          (remembered && bases.includes(remembered) ? remembered : null) ??
+          (fallback && bases.includes(fallback) ? fallback : null) ??
+          bases[0] ??
+          null;
+        set((s) => ({
+          prDialog: { ...s.prDialog, bases, base },
+        }));
+        // Now compute behind/ahead against whichever base we landed on.
+        if (base) await get().refreshPrDialogStatus();
+        else set((s) => ({ prDialog: { ...s.prDialog, statusLoading: false } }));
+      } catch (err) {
+        set((s) => ({
+          prDialog: {
+            ...s.prDialog,
+            statusLoading: false,
+            statusError: err instanceof Error ? err.message : String(err),
+          },
+        }));
+      }
+    })();
+  },
   closePrBranchChoice: () => set({ prBranchChoiceOpen: false }),
+
+  setPrDialogBase: (base) => {
+    set((s) => ({
+      prDialog: { ...s.prDialog, base, ignoreBehind: false, statusError: null },
+    }));
+    void get().refreshPrDialogStatus();
+  },
+
+  refreshPrDialogStatus: async () => {
+    const state = get();
+    const repoPath = state.repository?.path;
+    const base = state.prDialog.base;
+    const head = state.repository?.currentBranch;
+    if (!repoPath || !base || !head) {
+      set((s) => ({ prDialog: { ...s.prDialog, statusLoading: false } }));
+      return;
+    }
+    set((s) => ({ prDialog: { ...s.prDialog, statusLoading: true } }));
+    try {
+      // Compare against the REMOTE ref so we see the same commits the PR
+      // tool will. Comparing against the local copy of base lies when
+      // `origin/main` has commits the user hasn't pulled yet.
+      const { behind, ahead } = await gitApi.behindAhead(
+        repoPath,
+        `origin/${base}`,
+        head,
+      );
+      set((s) => ({
+        prDialog: { ...s.prDialog, behind, ahead, statusLoading: false },
+      }));
+    } catch (err) {
+      set((s) => ({
+        prDialog: {
+          ...s.prDialog,
+          statusLoading: false,
+          statusError: err instanceof Error ? err.message : String(err),
+        },
+      }));
+    }
+  },
+
+  prDialogRebase: async () => {
+    const state = get();
+    const repoPath = state.repository?.path;
+    const base = state.prDialog.base;
+    if (!repoPath || !base) return;
+    set((s) => ({
+      prDialog: { ...s.prDialog, statusLoading: true, statusError: null },
+    }));
+    try {
+      await gitApi.rebaseOnto(repoPath, `origin/${base}`);
+      get().pushToast(`Rebased onto origin/${base}`);
+      await get().refresh();
+      await get().refreshPrDialogStatus();
+    } catch (err) {
+      set((s) => ({
+        prDialog: {
+          ...s.prDialog,
+          statusLoading: false,
+          statusError: err instanceof Error ? err.message : String(err),
+        },
+      }));
+    }
+  },
+
+  prDialogMerge: async () => {
+    const state = get();
+    const repoPath = state.repository?.path;
+    const base = state.prDialog.base;
+    if (!repoPath || !base) return;
+    set((s) => ({
+      prDialog: { ...s.prDialog, statusLoading: true, statusError: null },
+    }));
+    try {
+      await gitApi.mergeInto(repoPath, `origin/${base}`);
+      get().pushToast(`Merged origin/${base} into current branch`);
+      await get().refresh();
+      await get().refreshPrDialogStatus();
+    } catch (err) {
+      set((s) => ({
+        prDialog: {
+          ...s.prDialog,
+          statusLoading: false,
+          statusError: err instanceof Error ? err.message : String(err),
+        },
+      }));
+    }
+  },
+
+  prDialogSkipBehind: () =>
+    set((s) => ({ prDialog: { ...s.prDialog, ignoreBehind: true } })),
+
   resetPrFlow: () =>
     set({
       prFlow: { state: "idle", message: "", url: null, error: null },
     }),
 
-  createPr: async ({ newBranchName }) => {
+  createPr: async ({ newBranchName, baseBranch }) => {
     const startState = get();
     if (!startState.repository) return;
     if (startState.prFlow.state === "running") return;
+    // Remember the chosen base for this repo so the dialog defaults to it
+    // next time — solo dev → main, GitFlow repo → develop, etc.
+    const repoPathForPersist = startState.repository.path;
+    set((s) => ({
+      settings: {
+        ...s.settings,
+        lastPrBaseByRepo: {
+          ...s.settings.lastPrBaseByRepo,
+          [repoPathForPersist]: baseBranch,
+        },
+      },
+    }));
+    writeSettings(get().settings);
 
     const repoPath = startState.repository.path;
     const setStep = (message: string) =>
@@ -2054,18 +2281,16 @@ export const useRepoStore = create<State>((set, get) => ({
         return;
       }
 
-      // 2) Resolve the base branch (PR target).
-      setStep("Resolving default branch…");
-      const baseBranch = await gitApi.defaultBranch(repoPath);
-
-      // Pre-flight: refuse to even try when head == base. `gh pr create`
-      // errors out late ("head branch 'main' is the same as base branch
-      // 'main'") and by then we've already done useless work.
+      // 2) Pre-flight: refuse to even try when head == base. `gh pr create`
+      //    errors out late ("head branch 'main' is the same as base branch
+      //    'main'") and by then we've already done useless work. Base
+      //    comes from the dialog now — no more "Resolving default branch…"
+      //    step because the user already picked one explicitly.
       const currentBranch = get().repository?.currentBranch ?? "";
       const headBranch = newBranchName?.trim() || currentBranch;
       if (headBranch === baseBranch) {
         fail(
-          `You're on the default branch '${baseBranch}'. Pick "Create new branch" in the dialog so the PR has somewhere to merge from.`,
+          `Can't open a PR from '${headBranch}' into itself. Pick "Create new branch" or change the base in the dialog.`,
         );
         return;
       }
@@ -2103,8 +2328,8 @@ export const useRepoStore = create<State>((set, get) => ({
           repoPath,
           commitUserPrompt,
         );
-        const commitMessage = (
-          await aiApi.runAiCli(cli.id, commitPrompt, repoPath)
+        const commitMessage = stripOuterCodeFence(
+          (await aiApi.runAiCli(cli.id, commitPrompt, repoPath)).trim(),
         ).trim();
         if (!commitMessage) {
           fail("AI returned an empty commit message — refusing to commit.");
@@ -2140,7 +2365,9 @@ export const useRepoStore = create<State>((set, get) => ({
       }
       const prUserPrompt = get().settings.aiSystemPrompts.pr ?? "";
       const prPrompt = await buildPromptForKind("pr", repoPath, prUserPrompt);
-      const prRaw = (await aiApi.runAiCli(cli.id, prPrompt, repoPath)).trim();
+      const prRaw = stripOuterCodeFence(
+        (await aiApi.runAiCli(cli.id, prPrompt, repoPath)).trim(),
+      ).trim();
       if (!prRaw) {
         fail("AI returned an empty PR description.");
         return;

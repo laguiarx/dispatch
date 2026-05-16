@@ -153,6 +153,10 @@ export function PrFlowDialog() {
                   target="_blank"
                   rel="noreferrer"
                   className={BTN_PRIMARY}
+                  // Once the user opens the PR in their browser, the
+                  // success card has served its purpose — collapse it so
+                  // the workspace is clear when they alt-tab back.
+                  onClick={reset}
                 >
                   Open PR ↗
                 </a>

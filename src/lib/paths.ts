@@ -62,6 +62,13 @@ export type Settings = {
     risk: string;
     branch: string;
   };
+  /**
+   * The last base branch the user picked when opening a PR, keyed by
+   * absolute repo path. Lets the Create PR dialog default to "the branch
+   * I always target in this repo" (e.g. `develop` in a GitFlow repo)
+   * instead of falling back to `origin/HEAD` every time.
+   */
+  lastPrBaseByRepo: Record<string, string>;
 };
 
 const DEFAULT_SETTINGS: Settings = {
@@ -89,6 +96,7 @@ const DEFAULT_SETTINGS: Settings = {
     risk: "",
     branch: "",
   },
+  lastPrBaseByRepo: {},
 };
 
 /**
@@ -254,10 +262,28 @@ export function readSettings(): Settings {
           : "",
       customColors: colors as Record<string, string>,
       aiSystemPrompts: readPromptMap(parsed.aiSystemPrompts),
+      lastPrBaseByRepo: readStringMap(parsed.lastPrBaseByRepo),
     };
   } catch {
     return { ...DEFAULT_SETTINGS };
   }
+}
+
+/**
+ * Read an unknown `Record<string, string>` defensively — used for the
+ * `lastPrBaseByRepo` map (repo path → preferred PR base). Drops any
+ * key/value pair that isn't strings. Returns an empty map if the input
+ * isn't an object.
+ */
+function readStringMap(raw: unknown): Record<string, string> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof k === "string" && typeof v === "string" && v.length > 0) {
+      out[k] = v;
+    }
+  }
+  return out;
 }
 
 export function writeSettings(settings: Settings): void {

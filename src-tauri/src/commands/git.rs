@@ -989,6 +989,106 @@ pub fn git_default_branch(repo_path: String) -> AppResult<String> {
     ))
 }
 
+/// One side of a PR comparison: how many commits the head branch is
+/// `behind` the base and how many it is `ahead`. Computed via
+/// `git rev-list --left-right --count base...head`. Both numbers are
+/// always non-negative — the PR-create dialog uses `behind` to warn the
+/// user "your branch is N commits behind base; rebase first?".
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AheadBehind {
+    pub ahead: u32,
+    pub behind: u32,
+}
+
+/// `git rev-list --left-right --count <base>...<head>` — returns
+/// `{ behind, ahead }` so the UI can show "X commits behind, Y ahead"
+/// before opening a PR. `base` is typically `origin/main` (the PR target)
+/// and `head` is the current local branch.
+#[tauri::command]
+pub fn git_behind_ahead(
+    repo_path: String,
+    base: String,
+    head: String,
+) -> AppResult<AheadBehind> {
+    let repo = resolve_repo(&repo_path)?;
+    // `--left-right --count A...B` returns "<behind>\t<ahead>" where
+    // behind = commits in A not in B (we'd need to apply) and ahead =
+    // commits in B not in A (we have locally that base doesn't).
+    let raw = run_git_string(
+        &repo,
+        &[
+            "rev-list",
+            "--left-right",
+            "--count",
+            &format!("{base}...{head}"),
+        ],
+    )?;
+    let trimmed = raw.trim();
+    let mut parts = trimmed.split_whitespace();
+    let behind: u32 = parts.next().unwrap_or("0").parse().unwrap_or(0);
+    let ahead: u32 = parts.next().unwrap_or("0").parse().unwrap_or(0);
+    Ok(AheadBehind { ahead, behind })
+}
+
+/// List remote-tracking branches on `origin`, sorted alphabetically with
+/// the repo's default branch first. Powers the "Into" picker in the
+/// Create PR dialog so the user can target any base branch
+/// (main/develop/staging/...) rather than being locked to origin/HEAD.
+///
+/// Returns short names (e.g. `main`, `develop`) without the `origin/`
+/// prefix — the dialog uses them directly as PR base arguments.
+#[tauri::command]
+pub fn git_remote_branches(repo_path: String) -> AppResult<Vec<String>> {
+    let repo = resolve_repo(&repo_path)?;
+    let raw = run_git_string(
+        &repo,
+        &[
+            "for-each-ref",
+            "--format=%(refname:short)",
+            "refs/remotes/origin/",
+        ],
+    )?;
+    let mut names: Vec<String> = raw
+        .lines()
+        .filter_map(|l| l.trim().strip_prefix("origin/").map(|s| s.to_string()))
+        // Skip the symbolic `HEAD` pointer — it's a duplicate of whatever
+        // the default branch is, and shows up as "HEAD" which is noise.
+        .filter(|n| n != "HEAD")
+        .collect();
+    names.sort();
+    // Pull the default branch to the top so it's the obvious first pick
+    // in the dropdown.
+    if let Ok(default) = git_default_branch(repo_path) {
+        if let Some(idx) = names.iter().position(|n| *n == default) {
+            let d = names.remove(idx);
+            names.insert(0, d);
+        }
+    }
+    Ok(names)
+}
+
+/// `git rebase <onto>` — replays the current branch's commits on top of
+/// the given ref. Used by the "your branch is N behind" affordance in
+/// the Create PR dialog. Conflict / dirty-tree errors bubble up verbatim
+/// so the UI can show them.
+#[tauri::command]
+pub fn git_rebase_onto(repo_path: String, onto: String) -> AppResult<()> {
+    let repo = resolve_repo(&repo_path)?;
+    run_git(&repo, &["rebase", &onto])?;
+    Ok(())
+}
+
+/// `git merge <ref> --no-edit` — fast-forward when possible, otherwise
+/// creates a merge commit with the default message. Companion to
+/// `git_rebase_onto` for users who prefer merge to rebase.
+#[tauri::command]
+pub fn git_merge_into(repo_path: String, from: String) -> AppResult<()> {
+    let repo = resolve_repo(&repo_path)?;
+    run_git(&repo, &["merge", "--no-edit", &from])?;
+    Ok(())
+}
+
 /// Undo the last commit while keeping its changes staged (`git reset --soft
 /// HEAD~1`). Matches VS Code's "Undo Last Commit" semantics — the user can
 /// re-edit the message in the composer and recommit.
