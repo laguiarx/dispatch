@@ -39,6 +39,11 @@ function handle(id: string, get: typeof useRepoStore.getState): void {
     case "app:preferences":
       s.setSettingsOpen(true);
       return;
+    case "app:check-updates":
+      s.checkForUpdate().catch(() => {
+        /* surfaced via toast */
+      });
+      return;
     case "file:open-repo":
       s.openRepositoryPicker().catch(() => {
         /* surfaced via error state */

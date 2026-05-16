@@ -16,16 +16,20 @@ pub fn build_app_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         .version(Some(env!("CARGO_PKG_VERSION")))
         .build();
 
-    // App menu (macOS): About / Preferences / Hide / Quit
+    // App menu (macOS): About / Preferences / Updates / Hide / Quit
     let preferences =
         MenuItemBuilder::with_id("app:preferences", "Preferences…")
             .accelerator("CmdOrCtrl+,")
+            .build(app)?;
+    let check_updates =
+        MenuItemBuilder::with_id("app:check-updates", "Check for Updates…")
             .build(app)?;
 
     let app_menu = SubmenuBuilder::new(app, "Squint")
         .item(&PredefinedMenuItem::about(app, Some("About Squint"), Some(about))?)
         .separator()
         .item(&preferences)
+        .item(&check_updates)
         .separator()
         .item(&PredefinedMenuItem::services(app, None)?)
         .separator()

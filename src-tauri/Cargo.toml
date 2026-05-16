@@ -1,6 +1,6 @@
 [package]
 name = "squint"
-version = "0.1.0"
+version = "0.2.2"
 description = "Squint — a focused macOS app for reviewing AI-generated Git changes."
 authors = ["Lucas Aguiar"]
 edition = "2021"

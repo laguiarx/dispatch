@@ -109,7 +109,6 @@ export function TopBar() {
   const updaterStatus = useRepoStore((s) => s.updaterStatus);
   const updateInfo = useRepoStore((s) => s.updateInfo);
   const updateProgress = useRepoStore((s) => s.updateProgress);
-  const checkForUpdate = useRepoStore((s) => s.checkForUpdate);
   const installUpdate = useRepoStore((s) => s.installUpdate);
 
   return (
@@ -217,9 +216,6 @@ export function TopBar() {
           status={updaterStatus}
           info={updateInfo}
           progress={updateProgress}
-          onCheck={() => {
-            void checkForUpdate();
-          }}
           onInstall={() => {
             void installUpdate();
           }}
@@ -267,44 +263,46 @@ function UpdateButton({
   status,
   info,
   progress,
-  onCheck,
   onInstall,
 }: {
   status: UpdaterStatus;
   info: UpdateInfo | null;
   progress: number | null;
-  onCheck: () => void;
   onInstall: () => void;
 }) {
-  const checking = status === "checking";
   const downloading = status === "downloading";
   const available = status === "available";
   const ready = status === "ready";
+  if (!available && !downloading && !ready) return null;
+
   const percent =
     progress == null
       ? null
       : Math.max(0, Math.min(100, Math.round(progress * 100)));
   const title = downloading
     ? `Downloading update${percent == null ? "" : ` (${percent}%)`}`
-    : checking
-      ? "Checking for updates..."
-      : available
-        ? `Install update ${info?.version ?? ""}`.trim()
-        : ready
-          ? "Relaunch to finish update"
-          : status === "error"
-            ? "Update check failed — click to retry"
-            : "Check for updates";
+    : available
+      ? `Install update ${info?.version ?? ""}`.trim()
+      : "Relaunch to finish update";
 
   return (
-    <IconBtn
+    <button
+      type="button"
+      className={cn(
+        "inline-flex items-center gap-1.5 h-6 px-2 rounded-2 border-0",
+        "bg-accent text-accent-fg text-[12px] font-medium cursor-pointer",
+        "transition-[filter,opacity] duration-[120ms]",
+        "hover:not-disabled:brightness-110",
+        "disabled:opacity-70 disabled:cursor-default",
+        "[&_[data-ai-spinner]]:h-3 [&_[data-ai-spinner]]:w-3",
+      )}
       title={title}
-      onClick={available || ready ? onInstall : onCheck}
-      active={available || ready || checking || downloading}
-      disabled={checking || downloading}
+      onClick={onInstall}
+      disabled={downloading}
     >
-      {checking || downloading ? <Spinner className="h-3 w-3" /> : I.download}
-    </IconBtn>
+      {downloading ? <Spinner /> : I.download}
+      <span>{downloading ? "Updating" : "Update"}</span>
+    </button>
   );
 }
 
