@@ -1,0 +1,32 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Squint app icon">
+  <!--
+    macOS app icon. Canvas 1024², rounded square inset to 960 × 960
+    (32 px margin per side, ~93.75 % canvas fill). Matches the visual
+    size of Slack / Linear / Cursor in the Dock; the previous 920²
+    revision still read as ~5 % smaller than those neighbours.
+
+    Corner radius 216 derived from Apple Big Sur ratio (185.4 / 824)
+    scaled to the 960 squircle (960 × 0.225 = 216).
+
+    Mark coordinates: original 1024-canvas drawing scaled 0.9375× and
+    offset by 32:
+      x' = round(x_old · 0.9375) + 32
+      y' = round(y_old · 0.9375) + 32
+  -->
+  <defs>
+    <clipPath id="squint-icon-mask">
+      <rect x="32" y="32" width="960" height="960" rx="216" ry="216" />
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#squint-icon-mask)">
+    <rect x="32" y="32" width="960" height="960" fill="#0B0B0F" />
+
+    <!-- Geometric squint mark: two filled apertures separated by a
+         negative-space slit. -->
+    <g fill="#5B5BD6" shape-rendering="geometricPrecision">
+      <path d="M250 390L512 489L774 390V493H250V390Z" />
+      <path d="M250 643L512 544L774 643V538H250V643Z" />
+    </g>
+  </g>
+</svg>
