@@ -22,24 +22,31 @@ const POPOVER_EYEBROW =
 const POPOVER_CLOSE =
   "p-0.5 bg-transparent border-0 text-fg-3 cursor-pointer hover:text-fg-0";
 
-type Anchor = { top: number; right: number };
+type Anchor = { top: number; left: number };
 
 function computeAnchor(): Anchor {
-  const trigger = document.querySelector<HTMLElement>("[data-git-menu-trigger]");
-  if (!trigger) return { top: 60, right: 16 };
+  const trigger = document.querySelector<HTMLElement>(
+    "[data-pr-create-trigger]",
+  );
+  if (!trigger) return { top: 60, left: 16 };
   const rect = trigger.getBoundingClientRect();
   return {
     top: rect.bottom + 6,
-    right: Math.max(8, window.innerWidth - rect.right),
+    // Align the card's left edge with the trigger; clamp so the 420px
+    // card never sticks out past the right edge of the window.
+    left: Math.max(
+      8,
+      Math.min(rect.left, window.innerWidth - 420 - 8),
+    ),
   };
 }
 
 /**
  * Branch-choice card shown before `createPr` fires. Portal-mounted and
- * anchored to the Git pill in the topbar — same pattern as `GitMenu` and
- * `PrFlowDialog`, so the whole "Create PR" interaction feels like one
- * conversation cascading out of the Git button instead of three
- * unrelated full-screen modals.
+ * anchored beneath the "Create PR" split-button in the topbar — same
+ * pattern as `GitMenu` and `PrFlowDialog`, so the whole "Create PR"
+ * interaction feels like one conversation cascading out of the button
+ * instead of three unrelated full-screen modals.
  */
 export function PrBranchChoiceDialog() {
   const open = useRepoStore((s) => s.prBranchChoiceOpen);
@@ -54,7 +61,7 @@ export function PrBranchChoiceDialog() {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
 
-  const [anchor, setAnchor] = useState<Anchor>({ top: 60, right: 16 });
+  const [anchor, setAnchor] = useState<Anchor>({ top: 60, left: 16 });
 
   // Reset state on each open.
   useEffect(() => {
@@ -88,7 +95,7 @@ export function PrBranchChoiceDialog() {
     function onDocClick(e: MouseEvent) {
       const t = e.target as Node | null;
       if (cardRef.current && t && !cardRef.current.contains(t)) {
-        const trigger = document.querySelector("[data-git-menu-trigger]");
+        const trigger = document.querySelector("[data-pr-create-trigger]");
         if (trigger && trigger.contains(t)) return;
         closeDialog();
       }
@@ -162,7 +169,7 @@ export function PrBranchChoiceDialog() {
     <div
       ref={cardRef}
       className={POPOVER_SHELL}
-      style={{ top: anchor.top, right: anchor.right }}
+      style={{ top: anchor.top, left: anchor.left }}
       role="dialog"
       aria-label="Create Pull Request"
     >

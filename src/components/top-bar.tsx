@@ -1,11 +1,60 @@
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { useRepoStore } from "@/features/repository/repository.store";
 import { cn } from "@/lib/utils";
+import { isTauri } from "@/lib/tauri";
 import { I } from "./icons";
 import { IconBtn } from "./icon-btn";
 import { RepoMenu } from "./repo-menu";
 import { BranchMenu } from "./branch-menu";
 import { EditorMenu } from "./editor-menu";
 import { GitMenu } from "./git-menu";
+
+/**
+ * Click-and-drag-to-move handler attached to the topbar.
+ *
+ * Two important details:
+ *
+ * 1. `data-tauri-drag-region` alone is unreliable on macOS WKWebView —
+ *    the mousedown can be consumed by the webview's own hit-testing before
+ *    Tauri's listener runs. Calling `startDragging()` imperatively from
+ *    our own React handler bypasses that path.
+ *
+ * 2. The import for `getCurrentWebviewWindow` is **static** (top of file)
+ *    instead of `await import(...)` on demand. `startDragging()` must be
+ *    invoked synchronously inside the mousedown event so the OS keeps the
+ *    mouse capture; an async `.then()` lets the event finish first and the
+ *    drag silently no-ops — which is exactly the bug the user saw before.
+ *
+ * Buttons / inputs / links inside the header keep their own click behavior
+ * because the mousedown listener bails when the event target is interactive.
+ */
+function handleTopBarMouseDown(e: React.MouseEvent) {
+  if (e.button !== 0) return;
+  const target = e.target as HTMLElement | null;
+  if (target && target.closest("button, a, input, textarea, [role='button']")) {
+    return;
+  }
+  if (!isTauri()) return;
+  getCurrentWebviewWindow()
+    .startDragging()
+    .catch(() => {
+      /* user released before the drag handle resolved — nothing to do */
+    });
+}
+
+function handleTopBarDoubleClick(e: React.MouseEvent) {
+  if (e.button !== 0) return;
+  const target = e.target as HTMLElement | null;
+  if (target && target.closest("button, a, input, textarea, [role='button']")) {
+    return;
+  }
+  if (!isTauri()) return;
+  const win = getCurrentWebviewWindow();
+  win.isMaximized().then((max) => {
+    if (max) void win.unmaximize();
+    else void win.maximize();
+  });
+}
 
 /**
  * Common pill styling for the repo / branch / git-AI triggers along the
@@ -49,10 +98,13 @@ export function TopBar() {
   const gitMenuOpen = useRepoStore((s) => s.gitMenuOpen);
   const setGitMenuOpen = useRepoStore((s) => s.setGitMenuOpen);
   const aiKind = useRepoStore((s) => s.aiKind);
+  const openPrBranchChoice = useRepoStore((s) => s.openPrBranchChoice);
 
   return (
     <header
       data-tauri-drag-region
+      onMouseDown={handleTopBarMouseDown}
+      onDoubleClick={handleTopBarDoubleClick}
       className={cn(
         // Layout. `pl-[var(--traffic-lights-w)]` preserves the macOS
         // traffic-lights gap on the left.
@@ -130,41 +182,24 @@ export function TopBar() {
             <BranchMenu />
           </div>
         ) : null}
+        {repository ? (
+          <PrLauncher
+            disabled={!repository}
+            menuOpen={gitMenuOpen}
+            aiActive={aiKind != null}
+            onCreatePr={() => {
+              openPrBranchChoice();
+              if (gitMenuOpen) setGitMenuOpen(false);
+            }}
+            onMenuToggle={() => setGitMenuOpen(!gitMenuOpen)}
+          />
+        ) : null}
       </div>
 
       <div
         data-tauri-drag-region
         className="flex items-center gap-1.5"
       >
-        <button
-          className={cn(
-            PILL_BASE,
-            !repository
-              ? "opacity-40 cursor-not-allowed"
-              : cn(PILL_HOVER, gitMenuOpen && PILL_ACTIVE),
-            // Subtle accent pulse while an AI action is running.
-            aiKind && repository && "text-accent",
-          )}
-          data-git-menu-trigger
-          onClick={() => setGitMenuOpen(!gitMenuOpen)}
-          disabled={!repository}
-          title="Git · AI assist (commit, PR, summary, risk)"
-          type="button"
-        >
-          <span
-            className={cn(
-              "inline-flex text-fg-2",
-              aiKind && repository && "text-accent",
-            )}
-          >
-            {I.git}
-          </span>
-          <span className="font-medium">Git</span>
-          <span className="grid place-items-center text-fg-3">
-            {I.chevron}
-          </span>
-        </button>
-        <GitMenu />
         <EditorLauncher
           disabled={!repository}
           menuOpen={editorMenuOpen}
@@ -272,6 +307,95 @@ function EditorLauncher({
         {I.chevron}
       </button>
       <EditorMenu />
+    </div>
+  );
+}
+
+/**
+ * Split-button: main half fires "Create PR" (branch → commit → push → open
+ * PR via gh), chevron half opens the AI Assist menu (Summarize / Review).
+ * Mirrors `EditorLauncher` styling so the two split-buttons in the topbar
+ * read as one family of controls.
+ *
+ * Lives in the LEFT group right after the branch picker — keeps the PR /
+ * AI affordances visually anchored to the current-branch context.
+ */
+function PrLauncher({
+  disabled,
+  menuOpen,
+  aiActive,
+  onCreatePr,
+  onMenuToggle,
+}: {
+  disabled: boolean;
+  menuOpen: boolean;
+  /** True while an AI run is in-flight — tints the whole pill accent so
+   *  the user can see something is happening even after the menu closes. */
+  aiActive: boolean;
+  onCreatePr: () => void;
+  onMenuToggle: () => void;
+}) {
+  const hot = !disabled && menuOpen;
+  return (
+    <div
+      className={cn(
+        "relative inline-flex items-stretch h-6 rounded-2 bg-transparent",
+        "transition-colors duration-[120ms]",
+        !disabled && "hover:bg-bg-hover",
+        hot && "bg-bg-active",
+      )}
+    >
+      <button
+        type="button"
+        // PR-flow dialogs (`PrBranchChoiceDialog`, `PrFlowDialog`) anchor
+        // themselves beneath this trigger via `getBoundingClientRect`.
+        data-pr-create-trigger
+        className={cn(
+          "inline-flex items-center gap-1.5 h-6 px-2 rounded-l-2 bg-transparent border-0",
+          "text-fg-1 text-[12px] cursor-pointer transition-colors duration-[120ms]",
+          !disabled && "hover:text-fg-0",
+          hot && "text-fg-0",
+          disabled && "text-fg-3 cursor-default",
+          aiActive && !disabled && "!text-accent",
+        )}
+        onClick={onCreatePr}
+        disabled={disabled}
+        title="Create Pull Request — branch · commit · push · open on GitHub"
+      >
+        <span
+          className={cn(
+            "inline-flex",
+            aiActive && !disabled ? "text-accent" : "text-fg-2",
+          )}
+        >
+          {I.git}
+        </span>
+        <span className="font-medium">Create PR</span>
+      </button>
+      <button
+        type="button"
+        // GitMenu uses this attribute to anchor its portal-mounted
+        // dropdown beneath the chevron and to detect "click on the
+        // trigger" for the outside-click logic.
+        data-pr-launcher-trigger
+        className={cn(
+          "grid place-items-center h-6 w-4 rounded-r-2 bg-transparent border-0",
+          "text-fg-2 cursor-pointer transition-colors duration-[120ms]",
+          // Hair-line divider matching EditorLauncher.
+          "shadow-[inset_1px_0_0_var(--bd-2)]",
+          !disabled &&
+            "hover:shadow-[inset_1px_0_0_var(--bd-1)] hover:text-fg-0",
+          hot && "text-fg-0 shadow-[inset_1px_0_0_var(--bd-1)]",
+          disabled && "text-fg-3 cursor-default",
+          "[&_svg]:h-[9px] [&_svg]:w-[9px]",
+        )}
+        onClick={onMenuToggle}
+        disabled={disabled}
+        title="AI Assist · summarize, review"
+      >
+        {I.chevron}
+      </button>
+      <GitMenu />
     </div>
   );
 }

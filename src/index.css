@@ -403,6 +403,31 @@ body {
   text-rendering: optimizeLegibility;
   letter-spacing: -0.005em;
   overflow: hidden;
+
+  /* App-shell selection model — this is a native-feeling desktop app, not
+   * a web page. Random text in tabs / sidebar / menus shouldn't turn into
+   * a selection when the user accidentally drags across it. We opt-back-in
+   * exactly where the content is meant to be selectable (form fields,
+   * terminal output, the diff viewer body — those carry `select-text` or
+   * an `<input>` / `<textarea>` tag).
+   *
+   * Bonus: without this, mousedown-and-drag on the topbar tries to text-
+   * select instead of triggering Tauri's window drag region, which makes
+   * the whole header feel "stuck" to the desktop. */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Re-enable selection inside form fields and any element explicitly marked
+ * as selectable (Tailwind's `select-text` class). Inputs / textareas need
+ * this so the user can actually highlight typed text — otherwise the global
+ * `user-select: none` above cascades into them. */
+input,
+textarea,
+[contenteditable],
+.select-text {
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 button {
