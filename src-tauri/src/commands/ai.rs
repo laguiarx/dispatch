@@ -93,13 +93,40 @@ pub async fn run_ai_cli(
     let cli_id_for_err = cli_id.clone();
 
     let output = tokio::task::spawn_blocking(move || {
-        Command::new(program)
-            .current_dir(&repo)
+        let mut cmd = Command::new(program);
+        cmd.current_dir(&repo)
             .args(&args)
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output()
+            .stderr(Stdio::piped());
+        // Strip terminal-emulator identification env vars before
+        // spawning. If Squint was launched from a WARP / iTerm / VS Code
+        // terminal, those programs inject env vars like `WARP_SESSION_ID`
+        // and `TERM_PROGRAM=WarpTerminal` that their daemon then uses to
+        // attach notifications to descendant processes. The result: every
+        // AI commit-message / PR-description run made `claude` show up as
+        // a tracked WARP "block", popping notifications. Clearing the
+        // markers makes the subprocess look like a generic CLI run from
+        // a non-emulator launcher, which is what it actually is.
+        for var in [
+            "TERM_PROGRAM",
+            "TERM_PROGRAM_VERSION",
+            "TERM_SESSION_ID",
+            "WARP_SESSION_ID",
+            "WARP_IS_LOCAL_SHELL_SESSION",
+            "WARP_USE_SSH_WRAPPER",
+            "WARP_HONOR_PS1",
+            "WARP_BLOCK_ID",
+            "ITERM_SESSION_ID",
+            "ITERM_PROFILE",
+            "VSCODE_INJECTION",
+            "VSCODE_IPC_HOOK_CLI",
+            "VSCODE_GIT_IPC_HANDLE",
+            "VSCODE_PID",
+        ] {
+            cmd.env_remove(var);
+        }
+        cmd.output()
     })
     .await
     .map_err(|e| AppError::msg(format!("ai task panicked: {e}")))?

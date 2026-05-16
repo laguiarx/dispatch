@@ -51,7 +51,7 @@ export function StashPromptDialog() {
       >
         <div className="flex items-center gap-2 px-3.5 py-3 border-b border-bd-1">
           <span className="text-[14px] font-semibold flex-1">
-            Stash changes to switch branches
+            Bring changes to the new branch
           </span>
           <button
             className="w-[22px] h-[22px] grid place-items-center rounded-[4px] text-fg-3 bg-transparent border-0 cursor-pointer hover:bg-bg-hover hover:text-fg-0"
@@ -65,8 +65,11 @@ export function StashPromptDialog() {
         <div className="flex flex-col gap-3 px-4 py-3.5">
           <p className="m-0 text-[12.5px] text-fg-2 leading-[1.5]">
             Your working tree has changes that would be overwritten by
-            switching to <strong>{pending.target}</strong>. Stash them to
-            continue — you can restore the stash later.
+            switching to <strong>{pending.target}</strong>. We'll stash
+            them, switch, and re-apply on top of the new branch so you
+            keep editing where you left off. If the changes conflict with{" "}
+            <strong>{pending.target}</strong>, they stay safely in the
+            stash list for you to resolve manually.
           </p>
           <label className="flex flex-col gap-1">
             <span className="text-[11px] text-fg-3">Stash message</span>
@@ -114,7 +117,7 @@ export function StashPromptDialog() {
             disabled={!message.trim() || busy}
             type="button"
           >
-            {busy ? "Stashing…" : `Stash & switch to ${pending.target}`}
+            {busy ? "Stashing…" : `Bring changes to ${pending.target}`}
           </button>
         </div>
       </div>

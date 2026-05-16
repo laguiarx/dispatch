@@ -792,22 +792,28 @@ pub struct StashEntry {
 }
 
 #[tauri::command]
-pub fn git_stash_push(
+pub async fn git_stash_push(
     repo_path: String,
     message: String,
     include_untracked: bool,
 ) -> AppResult<()> {
     let repo = resolve_repo(&repo_path)?;
-    let trimmed = message.trim();
+    let trimmed = message.trim().to_string();
     if trimmed.is_empty() {
         return Err(AppError::msg("Stash message is empty"));
     }
-    let mut args: Vec<&str> = vec!["stash", "push", "-m", trimmed];
-    if include_untracked {
-        args.push("--include-untracked");
-    }
-    run_git(&repo, &args)?;
-    Ok(())
+    // Async + spawn_blocking — stashing a large/untracked-heavy working
+    // tree can take seconds, and we never want git ops to stall the Tauri
+    // IPC dispatcher (see `git_merge_into` for the longer rationale).
+    tokio::task::spawn_blocking(move || {
+        let mut args: Vec<&str> = vec!["stash", "push", "-m", &trimmed];
+        if include_untracked {
+            args.push("--include-untracked");
+        }
+        run_git(&repo, &args).map(|_| ())
+    })
+    .await
+    .map_err(|e| AppError::msg(format!("stash push task panicked: {e}")))?
 }
 
 #[tauri::command]
@@ -877,27 +883,36 @@ fn validate_stash_ref(stash_ref: &str) -> AppResult<()> {
 }
 
 #[tauri::command]
-pub fn git_stash_pop(repo_path: String, stash_ref: String) -> AppResult<()> {
+pub async fn git_stash_pop(repo_path: String, stash_ref: String) -> AppResult<()> {
     let repo = resolve_repo(&repo_path)?;
     validate_stash_ref(&stash_ref)?;
-    run_git(&repo, &["stash", "pop", &stash_ref])?;
-    Ok(())
+    tokio::task::spawn_blocking(move || {
+        run_git(&repo, &["stash", "pop", &stash_ref]).map(|_| ())
+    })
+    .await
+    .map_err(|e| AppError::msg(format!("stash pop task panicked: {e}")))?
 }
 
 #[tauri::command]
-pub fn git_stash_apply(repo_path: String, stash_ref: String) -> AppResult<()> {
+pub async fn git_stash_apply(repo_path: String, stash_ref: String) -> AppResult<()> {
     let repo = resolve_repo(&repo_path)?;
     validate_stash_ref(&stash_ref)?;
-    run_git(&repo, &["stash", "apply", &stash_ref])?;
-    Ok(())
+    tokio::task::spawn_blocking(move || {
+        run_git(&repo, &["stash", "apply", &stash_ref]).map(|_| ())
+    })
+    .await
+    .map_err(|e| AppError::msg(format!("stash apply task panicked: {e}")))?
 }
 
 #[tauri::command]
-pub fn git_stash_drop(repo_path: String, stash_ref: String) -> AppResult<()> {
+pub async fn git_stash_drop(repo_path: String, stash_ref: String) -> AppResult<()> {
     let repo = resolve_repo(&repo_path)?;
     validate_stash_ref(&stash_ref)?;
-    run_git(&repo, &["stash", "drop", &stash_ref])?;
-    Ok(())
+    tokio::task::spawn_blocking(move || {
+        run_git(&repo, &["stash", "drop", &stash_ref]).map(|_| ())
+    })
+    .await
+    .map_err(|e| AppError::msg(format!("stash drop task panicked: {e}")))?
 }
 
 // ----- end stash -----------------------------------------------------------
@@ -1072,21 +1087,32 @@ pub fn git_remote_branches(repo_path: String) -> AppResult<Vec<String>> {
 /// the given ref. Used by the "your branch is N behind" affordance in
 /// the Create PR dialog. Conflict / dirty-tree errors bubble up verbatim
 /// so the UI can show them.
+///
+/// Async + `spawn_blocking` so a long rebase (large repo, many commits,
+/// hooks running) can't stall the Tauri IPC dispatcher and trigger the
+/// macOS "unresponsive app" watchdog that crashes WKWebView.
 #[tauri::command]
-pub fn git_rebase_onto(repo_path: String, onto: String) -> AppResult<()> {
+pub async fn git_rebase_onto(repo_path: String, onto: String) -> AppResult<()> {
     let repo = resolve_repo(&repo_path)?;
-    run_git(&repo, &["rebase", &onto])?;
-    Ok(())
+    tokio::task::spawn_blocking(move || {
+        run_git(&repo, &["rebase", &onto]).map(|_| ())
+    })
+    .await
+    .map_err(|e| AppError::msg(format!("rebase task panicked: {e}")))?
 }
 
 /// `git merge <ref> --no-edit` — fast-forward when possible, otherwise
 /// creates a merge commit with the default message. Companion to
-/// `git_rebase_onto` for users who prefer merge to rebase.
+/// `git_rebase_onto` for users who prefer merge to rebase. Same async +
+/// spawn_blocking rationale as `git_rebase_onto`.
 #[tauri::command]
-pub fn git_merge_into(repo_path: String, from: String) -> AppResult<()> {
+pub async fn git_merge_into(repo_path: String, from: String) -> AppResult<()> {
     let repo = resolve_repo(&repo_path)?;
-    run_git(&repo, &["merge", "--no-edit", &from])?;
-    Ok(())
+    tokio::task::spawn_blocking(move || {
+        run_git(&repo, &["merge", "--no-edit", &from]).map(|_| ())
+    })
+    .await
+    .map_err(|e| AppError::msg(format!("merge task panicked: {e}")))?
 }
 
 /// Undo the last commit while keeping its changes staged (`git reset --soft

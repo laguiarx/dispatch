@@ -569,12 +569,12 @@ function StatusBlock({
               {behind} commit{behind === 1 ? "" : "s"} behind origin/{base}.
               Update first?
             </div>
-            <div className="flex gap-1.5">
+            <div className="flex flex-wrap gap-1.5 justify-end">
               <button
                 type="button"
                 onClick={onRebase}
                 className={cn(
-                  "flex-1 px-2.5 py-[7px] rounded-2 text-[11.5px] font-medium",
+                  "px-2.5 py-[6px] rounded-2 text-[11.5px] font-medium",
                   "bg-bg-1 border border-bd-1 text-fg-0 cursor-pointer",
                   "hover:border-accent hover:text-accent",
                 )}
@@ -586,7 +586,7 @@ function StatusBlock({
                 type="button"
                 onClick={onMerge}
                 className={cn(
-                  "flex-1 px-2.5 py-[7px] rounded-2 text-[11.5px] font-medium",
+                  "px-2.5 py-[6px] rounded-2 text-[11.5px] font-medium",
                   "bg-bg-1 border border-bd-1 text-fg-0 cursor-pointer",
                   "hover:border-accent hover:text-accent",
                 )}
@@ -598,7 +598,7 @@ function StatusBlock({
                 type="button"
                 onClick={onSkip}
                 className={cn(
-                  "px-2.5 py-[7px] rounded-2 text-[11.5px]",
+                  "px-2.5 py-[6px] rounded-2 text-[11.5px]",
                   "bg-transparent border border-bd-1 text-fg-2 cursor-pointer",
                   "hover:text-fg-0 hover:border-bd-2",
                 )}
