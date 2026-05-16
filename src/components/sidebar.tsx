@@ -10,7 +10,6 @@ import { FileRow } from "./file-row";
 import { CommitComposer } from "./commit-composer";
 import { FileTree } from "./file-tree";
 import { SearchPanel } from "./search-panel";
-import { ResizeHandle } from "./resize-handle";
 
 // Top-row tab style (Changes / Files / Search). Same 24px height, radius-1
 // pill, hover/active states pulled from the design system.
@@ -438,7 +437,6 @@ export function Sidebar() {
       ) : (
         <SearchPanel />
       )}
-      <ResizeHandle side="left" />
     </aside>
   );
 }
@@ -461,7 +459,7 @@ function SidebarGroup({
 }) {
   const [open, setOpen] = useState(true);
   return (
-    <div className="pt-1.5 pb-0.5 group">
+    <div className="pt-1.5 pb-0.5 group/section">
       <div className="flex items-center gap-1 pr-2">
         <button
           className={cn(
@@ -484,12 +482,13 @@ function SidebarGroup({
         </button>
         {actions ? (
           <div
-            // Action cluster stays hidden until the group is hovered.
-            // `group-hover:` reveals it; `focus-within:` keeps it open
-            // while one of the buttons has focus.
+            // Action cluster stays hidden until the section header is
+            // hovered. Named `group/section` so this doesn't fire when
+            // the user is just moving the mouse over one of the file
+            // rows inside — those have their own `group/row`.
             className={cn(
               "inline-flex items-center gap-0.5 opacity-0 transition-opacity duration-100",
-              "group-hover:opacity-100 focus-within:opacity-100",
+              "group-hover/section:opacity-100 focus-within:opacity-100",
             )}
           >
             {actions}

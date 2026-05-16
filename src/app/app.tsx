@@ -9,6 +9,10 @@ import { PrFlowDialog } from "@/components/pr-flow-dialog";
 import { ReplaceOverlay } from "@/components/replace-overlay";
 import { Spinner } from "@/components/spinner";
 import { TerminalDrawer } from "@/components/terminal-drawer";
+import {
+  SidebarResizeHandle,
+  TerminalResizeHandle,
+} from "@/components/resize-handle";
 import { CommandPalette } from "@/components/command-palette";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { SettingsDialog } from "@/components/settings-dialog";
@@ -259,9 +263,11 @@ export function App() {
 
   return (
     <div
-      // Outermost shell. Outer 6px padding + gap so the topbar and
-      // workspace each sit as separate floating cards with breathing room.
-      className="h-screen relative flex flex-col gap-1.5 p-1.5 bg-bg-0 overflow-hidden"
+      // Outermost shell. 6px padding around the bubbles + 4px gap between
+      // topbar and workspace — the inter-bubble gap matches the
+      // sidebar↔main and main↔terminal gaps below so every seam in the
+      // app reads as the same width.
+      className="h-screen relative flex flex-col gap-1 p-1.5 bg-bg-0 overflow-hidden"
     >
       <TopBar />
 
@@ -270,7 +276,10 @@ export function App() {
           // Three-column workspace grid (left sidebar · main · optional
           // right). Width comes from the inline `gridTemplateColumns`
           // style so the sidebar can collapse to zero when hidden.
-          className="flex-1 grid min-h-0 overflow-hidden gap-1.5"
+          // `relative` anchors the sidebar resize handle, which lives in
+          // the inter-column gap rather than inside the sidebar bubble
+          // (so the user can grab the visible space between the islands).
+          className="flex-1 grid min-h-0 overflow-hidden gap-1 relative"
           style={{
             gridTemplateColumns: [
               settings.leftSidebarVisible
@@ -286,8 +295,10 @@ export function App() {
           {/* Right column of the workspace grid: main-col on top, terminal
               drawer beneath it. Keeping them in the same flex-column means
               the terminal opening only shortens the diff pane — the
-              sidebar (left column) keeps its full workspace height. */}
-          <div className="flex flex-col min-w-0 min-h-0 gap-1.5">
+              sidebar (left column) keeps its full workspace height.
+              `relative` anchors the terminal resize handle, which sits in
+              the inter-row gap between main and terminal. */}
+          <div className="flex flex-col min-w-0 min-h-0 gap-1 relative">
             <div
               // The "main column" floating card — same visual treatment
               // as the sidebars / terminal drawer so the three workspace
@@ -304,7 +315,9 @@ export function App() {
               <DiffPane />
             </div>
             <TerminalDrawer />
+            <TerminalResizeHandle />
           </div>
+          <SidebarResizeHandle />
           {/* Right sidebar removed — per-file actions live inline on each
               FileRow in the left sidebar, Git/AI lives in the topbar, and
               AI output opens as a centered modal (`AiOutputDialog`). */}

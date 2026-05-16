@@ -28,7 +28,10 @@ type Props = {
  * color on individual descendants (see `name`/`dir`/`stats` modifiers).
  */
 const ROW =
-  "group grid grid-cols-[16px_minmax(0,1fr)_auto_auto] items-center gap-[7px] " +
+  // Named group (`group/row`) so the action buttons below light up only
+  // on the hovered row — NOT when the user's mouse is over the enclosing
+  // Staged / Unstaged section (which itself uses `group/section`).
+  "group/row grid grid-cols-[16px_minmax(0,1fr)_auto_auto] items-center gap-[7px] " +
   "h-[var(--row-h)] px-3 cursor-pointer text-[12px] border-l-2 border-l-transparent " +
   "select-none transition-[background-color,border-color] duration-100 " +
   "hover:bg-bg-hover";
@@ -49,7 +52,7 @@ const PATHWRAP = "flex flex-col min-w-0 leading-[1.15]";
 const NAME =
   "font-medium text-fg-0 whitespace-nowrap overflow-hidden text-ellipsis";
 const NAME_REVIEWED =
-  "!text-fg-3 group-hover:!text-fg-1 " +
+  "!text-fg-3 group-hover/row:!text-fg-1 " +
   "before:content-['✓_'] before:text-git-add before:font-semibold before:mr-px";
 const DIR =
   "font-mono text-[10px] text-fg-3 whitespace-nowrap overflow-hidden text-ellipsis";
@@ -64,14 +67,21 @@ const STAGE_BTN =
   "w-4 h-4 rounded-[3px] grid place-items-center text-[11px] leading-none " +
   "bg-transparent border border-dashed border-bd-2 text-fg-3 cursor-pointer " +
   "hover:text-fg-0 hover:border-bd-3";
+// Hovering the staged variant should still feel like a button — brighten
+// the border to --accent-hi and bump the soft fill so the "unstage" intent
+// is obvious without changing layout / icon.
 const STAGE_BTN_ON =
-  "!bg-accent-soft !border-solid !border-accent !text-accent";
+  "!bg-accent-soft !border-solid !border-accent !text-accent " +
+  "hover:!border-accent-hi " +
+  "hover:!bg-[color-mix(in_oklab,var(--accent)_24%,transparent)]";
 // Square 3-dots ⋯ overflow button — always visible (consistent affordance
-// across rows), dim by default, brightens on row-hover / selected.
+// across rows), stays dim until the user hovers the button itself. Same
+// model as the + stage button: row-hover doesn't paint these so the eye
+// has one clear hover target per affordance.
 const MORE_BTN =
   "w-5 h-5 rounded-[3px] grid place-items-center bg-transparent border-0 cursor-pointer " +
   "text-fg-3 transition-[color,background-color] duration-100 " +
-  "group-hover:text-fg-1 hover:!bg-bg-hover hover:!text-fg-0";
+  "hover:!bg-bg-hover hover:!text-fg-0";
 const MORE_BTN_ACTIVE = "!bg-bg-active !text-fg-0";
 const MORE_BTN_REVIEWED = "!text-accent";
 // Popover anchored under the ⋯ button. 220px is the sweet spot where
