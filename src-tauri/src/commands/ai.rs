@@ -16,32 +16,54 @@ pub struct AiCliInfo {
 }
 
 /// Probe PATH for each supported CLI and return an ordered list.
+///
+/// Async + `spawn_blocking` per candidate so the two `--version` invocations
+/// run in parallel and don't stall the Tauri IPC thread. `claude` and
+/// `codex` are Node binaries with non-trivial startup (200-500ms each), so
+/// running them serially on the IPC thread was visibly slow on first open
+/// of Preferences > AI.
 #[tauri::command]
-pub fn detect_ai_clis() -> AppResult<Vec<AiCliInfo>> {
+pub async fn detect_ai_clis() -> AppResult<Vec<AiCliInfo>> {
     let candidates: &[(&str, &str, &str)] = &[
         ("claude", "Claude Code", "--version"),
         ("codex", "Codex", "--version"),
     ];
-    let mut out = Vec::with_capacity(candidates.len());
-    for (id, name, version_arg) in candidates {
-        let available = which(id);
-        let version = if available {
-            Command::new(id)
-                .arg(version_arg)
-                .output()
-                .ok()
-                .and_then(|o| String::from_utf8(o.stdout).ok())
-                .map(|s| s.trim().to_string())
-                .unwrap_or_default()
-        } else {
-            String::new()
-        };
-        out.push(AiCliInfo {
-            id: id.to_string(),
-            name: name.to_string(),
-            available,
-            version,
-        });
+    let handles: Vec<_> = candidates
+        .iter()
+        .map(|(id, name, version_arg)| {
+            let id = id.to_string();
+            let name = name.to_string();
+            let version_arg = version_arg.to_string();
+            tokio::task::spawn_blocking(move || {
+                let available = which(&id);
+                let version = if available {
+                    Command::new(&id)
+                        .arg(&version_arg)
+                        .stdin(Stdio::null())
+                        .stderr(Stdio::null())
+                        .output()
+                        .ok()
+                        .and_then(|o| String::from_utf8(o.stdout).ok())
+                        .map(|s| s.trim().to_string())
+                        .unwrap_or_default()
+                } else {
+                    String::new()
+                };
+                AiCliInfo {
+                    id,
+                    name,
+                    available,
+                    version,
+                }
+            })
+        })
+        .collect();
+    let mut out = Vec::with_capacity(handles.len());
+    for h in handles {
+        out.push(
+            h.await
+                .map_err(|e| AppError::msg(format!("cli probe panicked: {e}")))?,
+        );
     }
     Ok(out)
 }

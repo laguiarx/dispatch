@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRepoStore } from "@/features/repository/repository.store";
 import { BTN_GHOST } from "@/lib/btn";
 import type { DiffExpansion, SearchView } from "@/lib/paths";
@@ -593,11 +593,11 @@ function AiSection() {
   const aiSystemPrompts = useRepoStore((s) => s.settings.aiSystemPrompts);
   const setAiSystemPrompt = useRepoStore((s) => s.setAiSystemPrompt);
 
-  if (list.length === 0 && !loading) {
+  useEffect(() => {
     fetchAiClis().catch(() => {
-      /* non-fatal */
+      /* non-fatal — `fetchAiClis` no-ops on cached / in-flight calls */
     });
-  }
+  }, [fetchAiClis]);
 
   const available = list.filter((c) => c.available);
 

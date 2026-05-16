@@ -92,10 +92,17 @@ export function App() {
 
   // Show the welcome tour on first launch.
   const setOnboardingOpen = useRepoStore((s) => s.setOnboardingOpen);
+  const fetchAiClis = useRepoStore((s) => s.fetchAiClis);
   useEffect(() => {
     if (!settings.firstRunCompleted) {
       setOnboardingOpen(true);
     }
+    // Warm the AI CLI probe in the background so opening Preferences > AI
+    // (or triggering an AI action) doesn't block on a fresh subprocess
+    // detection. Fire-and-forget — `fetchAiClis` no-ops on later calls.
+    fetchAiClis().catch(() => {
+      /* non-fatal */
+    });
     // Only on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
