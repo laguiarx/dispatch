@@ -21,6 +21,7 @@ import { StashPromptDialog } from "@/components/stash-prompt-dialog";
 import { OnboardingModal } from "@/components/onboarding-modal";
 import { Toast } from "@/components/toast";
 import { NoRepoState } from "@/components/no-repo-state";
+import { I } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import {
   getLastRepoPath,
@@ -215,6 +216,16 @@ export function App() {
   const pushToast = useRepoStore((s) => s.pushToast);
   const setShortcutsOpen = useRepoStore((s) => s.setShortcutsOpen);
 
+  const copyErrorMessage = async () => {
+    if (!errorMessage) return;
+    try {
+      await navigator.clipboard.writeText(errorMessage);
+      pushToast("Copied error to clipboard");
+    } catch {
+      pushToast("Clipboard unavailable", "danger");
+    }
+  };
+
   const actionCommands = useMemo(
     () =>
       buildCommands({
@@ -365,10 +376,24 @@ export function App() {
           )}
         >
           <span className="font-mono font-semibold">Error</span>
-          <span>{errorMessage}</span>
+          <span className="min-w-0 flex-1 truncate">{errorMessage}</span>
           <button
+            type="button"
+            title="Copy error"
+            aria-label="Copy error"
             className={cn(
-              "ml-auto px-1.5 py-0.5 rounded-[3px] bg-transparent border-0 cursor-pointer",
+              "grid h-5 w-5 place-items-center rounded-[3px] bg-transparent border-0 cursor-pointer",
+              "text-diff-del-mark",
+              "hover:bg-white/[0.05]",
+            )}
+            onClick={copyErrorMessage}
+          >
+            {I.copy}
+          </button>
+          <button
+            type="button"
+            className={cn(
+              "px-1.5 py-0.5 rounded-[3px] bg-transparent border-0 cursor-pointer",
               "text-diff-del-mark text-[10.5px] uppercase tracking-[0.04em]",
               "hover:bg-white/[0.05]",
             )}
