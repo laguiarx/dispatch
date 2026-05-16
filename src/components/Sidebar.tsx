@@ -330,22 +330,6 @@ export function Sidebar() {
                 actions={
                   <>
                     <button
-                      className={cn(
-                        "grid place-items-center w-5 h-5 rounded text-fg-2 transition-colors",
-                        "hover:text-diff-del-mark hover:bg-[color-mix(in_oklab,var(--diff-del-mark)_12%,transparent)]",
-                      )}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        requestDiscardMany(
-                          unstagedFiltered.map((f) => f.path),
-                        );
-                      }}
-                      title="Discard all (in view) — reverts the working tree"
-                      type="button"
-                    >
-                      {I.undo}
-                    </button>
-                    <button
                       className="grid place-items-center w-5 h-5 rounded text-fg-2 transition-colors hover:bg-bg-hover hover:text-fg-0"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -356,6 +340,13 @@ export function Sidebar() {
                     >
                       {I.plus}
                     </button>
+                    <GroupMoreMenu
+                      onDiscardAll={() =>
+                        requestDiscardMany(
+                          unstagedFiltered.map((f) => f.path),
+                        )
+                      }
+                    />
                   </>
                 }
               >
@@ -506,6 +497,83 @@ function SidebarGroup({
         ) : null}
       </div>
       {open ? <div>{children}</div> : null}
+    </div>
+  );
+}
+
+function GroupMoreMenu({ onDiscardAll }: { onDiscardAll: () => void }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDocClick(e: MouseEvent) {
+      const t = e.target as Node | null;
+      if (wrapRef.current && t && !wrapRef.current.contains(t)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div className="relative inline-flex" ref={wrapRef}>
+      <button
+        type="button"
+        className={cn(
+          "grid place-items-center w-5 h-5 rounded text-fg-2 transition-colors",
+          "hover:bg-bg-hover hover:text-fg-0",
+          open && "bg-bg-active text-fg-0",
+        )}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((o) => !o);
+        }}
+        title="More actions"
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        {I.ellipsis}
+      </button>
+      {open ? (
+        <div
+          role="menu"
+          className={cn(
+            "absolute top-[calc(100%+4px)] right-0 z-30 min-w-[200px]",
+            "bg-bg-2 border border-bd-2 rounded-3 py-1",
+            "shadow-[0_12px_32px_rgba(0,0,0,0.5)]",
+          )}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            role="menuitem"
+            className={cn(
+              "grid grid-cols-[18px_1fr] items-center gap-2 w-full px-3 py-[7px]",
+              "text-left text-[12px] text-fg-1 bg-transparent border-0 cursor-pointer",
+              "hover:!text-git-del",
+              "hover:bg-[color-mix(in_oklab,var(--git-del)_14%,transparent)]",
+              "[&:hover_.grm-icon]:!text-current",
+            )}
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen(false);
+              onDiscardAll();
+            }}
+            type="button"
+          >
+            <span className="grm-icon grid place-items-center text-fg-3">
+              {I.discard}
+            </span>
+            <span>Discard all (in view)</span>
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
