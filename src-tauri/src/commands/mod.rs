@@ -4,6 +4,7 @@ pub mod git;
 pub mod repository;
 pub mod replace;
 pub mod search;
+pub mod terminal;
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};

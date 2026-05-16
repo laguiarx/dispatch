@@ -7,7 +7,7 @@ import "@fontsource-variable/geist";
 import "@fontsource-variable/geist-mono";
 import "@fontsource/jetbrains-mono/400.css";
 import "@fontsource/jetbrains-mono/500.css";
-import { App } from "./app/App";
+import { App } from "./app/app";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(

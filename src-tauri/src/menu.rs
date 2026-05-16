@@ -12,7 +12,7 @@ const ACTION_EVENT: &str = "menu-action";
 /// to in-app actions.
 pub fn build_app_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let about = AboutMetadataBuilder::new()
-        .name(Some("Review Desk"))
+        .name(Some("Squint"))
         .version(Some(env!("CARGO_PKG_VERSION")))
         .build();
 
@@ -22,8 +22,8 @@ pub fn build_app_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
             .accelerator("CmdOrCtrl+,")
             .build(app)?;
 
-    let app_menu = SubmenuBuilder::new(app, "Review Desk")
-        .item(&PredefinedMenuItem::about(app, Some("About Review Desk"), Some(about))?)
+    let app_menu = SubmenuBuilder::new(app, "Squint")
+        .item(&PredefinedMenuItem::about(app, Some("About Squint"), Some(about))?)
         .separator()
         .item(&preferences)
         .separator()
@@ -117,6 +117,10 @@ pub fn build_app_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         MenuItemBuilder::with_id("view:toggle-right", "Toggle Right Sidebar")
             .accelerator("CmdOrCtrl+Alt+B")
             .build(app)?;
+    let toggle_terminal =
+        MenuItemBuilder::with_id("view:toggle-terminal", "Toggle Terminal")
+            .accelerator("CmdOrCtrl+`")
+            .build(app)?;
     let cmd_palette =
         MenuItemBuilder::with_id("view:command-palette", "Command Palette…")
             .accelerator("CmdOrCtrl+Shift+P")
@@ -128,6 +132,7 @@ pub fn build_app_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         .separator()
         .item(&toggle_left)
         .item(&toggle_right)
+        .item(&toggle_terminal)
         .separator()
         .item(&cmd_palette)
         .build()?;

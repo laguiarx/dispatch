@@ -68,7 +68,7 @@ const DEFAULT_SETTINGS: Settings = {
   theme: "dark",
   density: "cozy",
   autoOpenLast: true,
-  diffExpansion: "full",
+  diffExpansion: "hunks",
   searchView: "list",
   leftSidebarVisible: true,
   rightSidebarVisible: true,
@@ -212,7 +212,7 @@ export function readSettings(): Settings {
       // force `cozy` everywhere and ignore whatever the legacy prefs say.
       density: "cozy",
       autoOpenLast: typeof parsed.autoOpenLast === "boolean" ? parsed.autoOpenLast : true,
-      diffExpansion: parsed.diffExpansion === "hunks" ? "hunks" : "full",
+      diffExpansion: parsed.diffExpansion === "full" ? "full" : "hunks",
       searchView: parsed.searchView === "tree" ? "tree" : "list",
       leftSidebarVisible:
         typeof parsed.leftSidebarVisible === "boolean"

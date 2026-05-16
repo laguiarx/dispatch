@@ -5,6 +5,7 @@ export type IconName =
   | "search"
   | "replace"
   | "sparkles"
+  | "git"
   | "branch"
   | "folder"
   | "check"
@@ -29,11 +30,14 @@ export type IconName =
   | "viewTree"
   | "sidebarLeft"
   | "sidebarRight"
+  | "panelBottom"
   | "code"
   | "ellipsis"
   | "keyboard"
   | "splitView"
-  | "inlineView";
+  | "inlineView"
+  | "fileFull"
+  | "fileHunks";
 
 export const I: Record<IconName, ReactElement> = {
   refresh: (
@@ -82,6 +86,34 @@ export const I: Record<IconName, ReactElement> = {
       <circle cx="4" cy="12.5" r="1.5" fill="none" stroke="currentColor" strokeWidth="1.2" />
       <circle cx="12" cy="6" r="1.5" fill="none" stroke="currentColor" strokeWidth="1.2" />
       <path d="M4 5v6M4 8c0-2 2-2 4-2h.5" fill="none" stroke="currentColor" strokeWidth="1.2" />
+    </svg>
+  ),
+  // Commit-graph style "Git" icon used by the topbar's combined Git/AI
+  // pill. Distinct from `branch` (which shows a fork-and-merge structure
+  // with open circles) — this one uses filled commit dots on a vertical
+  // mainline with a single side branch curving in, reading as the kind of
+  // graph you'd see in `git log --graph`.
+  git: (
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+      {/* mainline */}
+      <path
+        d="M5 3v10"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+      />
+      {/* side branch curving out and back */}
+      <path
+        d="M5 8c0 -2 2 -3 4 -3h1.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+      />
+      {/* three commits */}
+      <circle cx="5" cy="3" r="1.4" fill="currentColor" />
+      <circle cx="5" cy="13" r="1.4" fill="currentColor" />
+      <circle cx="11" cy="5" r="1.4" fill="currentColor" />
     </svg>
   ),
   folder: (
@@ -229,37 +261,25 @@ export const I: Record<IconName, ReactElement> = {
       />
     </svg>
   ),
+  // A proper cog (teeth around a hub + a hole in the centre). Replaces an
+  // older sliders-style icon that was confusingly named `gear`. Used by
+  // the Preferences entry point in the topbar and in the command palette.
   gear: (
-    <svg viewBox="0 0 16 16" width="14" height="14">
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
       <path
-        d="M2.5 4h8M2.5 8h3M2.5 12h6"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-      />
-      <circle
-        cx="12"
-        cy="4"
-        r="1.7"
+        d="M8 1.5l.5 1.7a5.5 5.5 0 0 1 1.6.65l1.55-.85 1.35 1.35-.85 1.55a5.5 5.5 0 0 1 .65 1.6L14.5 8l-1.7.5a5.5 5.5 0 0 1-.65 1.6l.85 1.55-1.35 1.35-1.55-.85a5.5 5.5 0 0 1-1.6.65L8 14.5l-.5-1.7a5.5 5.5 0 0 1-1.6-.65l-1.55.85-1.35-1.35.85-1.55a5.5 5.5 0 0 1-.65-1.6L1.5 8l1.7-.5a5.5 5.5 0 0 1 .65-1.6l-.85-1.55 1.35-1.35 1.55.85a5.5 5.5 0 0 1 1.6-.65L8 1.5z"
         fill="none"
         stroke="currentColor"
-        strokeWidth="1.3"
+        strokeWidth="1.1"
+        strokeLinejoin="round"
       />
       <circle
         cx="8"
         cy="8"
-        r="1.7"
+        r="2"
         fill="none"
         stroke="currentColor"
-        strokeWidth="1.3"
-      />
-      <circle
-        cx="11"
-        cy="12"
-        r="1.7"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.3"
+        strokeWidth="1.1"
       />
     </svg>
   ),
@@ -386,6 +406,31 @@ export const I: Record<IconName, ReactElement> = {
       />
     </svg>
   ),
+  // Mirror of `sidebarLeft`/`sidebarRight` but with the divider on the
+  // BOTTOM edge — used for the integrated terminal toggle so the topbar
+  // controls read as a single icon family (panels on left / right /
+  // bottom edges of the workspace).
+  panelBottom: (
+    <svg viewBox="0 0 16 16" width="14" height="14">
+      <rect
+        x="2.5"
+        y="3"
+        width="11"
+        height="10"
+        rx="1.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.2"
+      />
+      <path d="M2.5 10h11" stroke="currentColor" strokeWidth="1.2" />
+      <path
+        d="M5 11.6h1.2M7.4 11.6h1.2M9.8 11.6h1.2"
+        stroke="currentColor"
+        strokeWidth="1.1"
+        strokeLinecap="round"
+      />
+    </svg>
+  ),
   code: (
     <svg viewBox="0 0 16 16" width="14" height="14">
       <path
@@ -481,6 +526,64 @@ export const I: Record<IconName, ReactElement> = {
         y2="9.5"
         stroke="currentColor"
         strokeWidth="1.2"
+      />
+    </svg>
+  ),
+  // Full-file diff expansion mode — a rectangle with continuous horizontal
+  // rules, reading as "every line shown".
+  fileFull: (
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+      <rect
+        x="2.5"
+        y="2"
+        width="11"
+        height="12"
+        rx="1.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.2"
+      />
+      <path
+        d="M4.5 5h7M4.5 7h7M4.5 9h7M4.5 11h7"
+        stroke="currentColor"
+        strokeWidth="1.1"
+        strokeLinecap="round"
+      />
+    </svg>
+  ),
+  // Hunks-only mode — rectangle with two solid rules, then a dashed rule
+  // (representing skipped context), then more solid rules. Reads as "only
+  // the changed regions are shown".
+  fileHunks: (
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+      <rect
+        x="2.5"
+        y="2"
+        width="11"
+        height="12"
+        rx="1.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.2"
+      />
+      <path
+        d="M4.5 5h7M4.5 7h7"
+        stroke="currentColor"
+        strokeWidth="1.1"
+        strokeLinecap="round"
+      />
+      <path
+        d="M4.5 9h7"
+        stroke="currentColor"
+        strokeWidth="1.1"
+        strokeDasharray="1.6 1.4"
+        strokeLinecap="round"
+      />
+      <path
+        d="M4.5 11h7"
+        stroke="currentColor"
+        strokeWidth="1.1"
+        strokeLinecap="round"
       />
     </svg>
   ),

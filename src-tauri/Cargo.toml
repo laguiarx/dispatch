@@ -1,12 +1,12 @@
 [package]
-name = "ai-code-review"
+name = "squint"
 version = "0.1.0"
-description = "AI Code Review Desk — a focused macOS app for reviewing AI-generated Git changes."
+description = "Squint — a focused macOS app for reviewing AI-generated Git changes."
 authors = ["Lucas Aguiar"]
 edition = "2021"
 
 [lib]
-name = "ai_code_review_lib"
+name = "squint_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
@@ -25,4 +25,5 @@ walkdir = "2"
 ignore = "0.4"
 globset = "0.4"
 base64 = "0.22"
-tokio = { version = "1", features = ["rt", "rt-multi-thread"] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "sync"] }
+portable-pty = "0.8"

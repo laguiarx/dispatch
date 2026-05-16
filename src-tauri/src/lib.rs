@@ -2,8 +2,58 @@ mod commands;
 mod error;
 mod menu;
 
+/// Inherit the user's real `$PATH` from their login shell.
+///
+/// macOS apps launched from Finder / Spotlight / Dock get a minimal PATH
+/// from launchd — usually just `/usr/bin:/bin:/usr/sbin:/sbin`. That's
+/// missing every dir where the tools we care about actually live
+/// (`/opt/homebrew/bin`, `/usr/local/bin`, `~/.npm-global/bin`,
+/// `~/.cargo/bin`, NVM paths, etc), so `which("gh")` and friends fail.
+/// In `tauri dev` the app inherits the terminal's PATH (where the user
+/// has all their tools), so the integrations panel reads as fully
+/// configured — masking the production bug.
+///
+/// Fix: at startup, spawn the user's `$SHELL` as an interactive login
+/// shell, ask it to print `$PATH`, and propagate the result onto the
+/// current process. After this, every later `Command::new("gh")` /
+/// `which(...)` call sees the same PATH the user does in Terminal.
+#[cfg(target_os = "macos")]
+fn fix_macos_path_from_login_shell() {
+    use std::process::Command;
+    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
+    // `-i -l -c '...'` runs the shell as an interactive login shell so it
+    // sources ~/.zshrc, ~/.zprofile, ~/.bash_profile, /etc/paths.d/*, etc
+    // — same path discovery the user gets when they open a Terminal tab.
+    // 800ms is generous; a healthy shell startup takes <200ms.
+    let out = Command::new(&shell)
+        .args(["-ilc", "echo -n $PATH"])
+        .env_remove("PROMPT_COMMAND") // some setups print noise on startup
+        .output();
+    let Ok(out) = out else { return };
+    if !out.status.success() {
+        return;
+    }
+    let path = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    if path.is_empty() {
+        return;
+    }
+    // Only overwrite if the shell-resolved PATH is richer than what we
+    // already have (e.g. when launched from a terminal already, the
+    // existing PATH is fine and we don't want to clobber dev-time
+    // additions).
+    let existing = std::env::var("PATH").unwrap_or_default();
+    if path != existing && path.len() > existing.len() {
+        std::env::set_var("PATH", path);
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Has to happen BEFORE the Tauri builder spins up tokio + spawns any
+    // commands — those inherit the process env at creation time.
+    #[cfg(target_os = "macos")]
+    fix_macos_path_from_login_shell();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
@@ -59,6 +109,10 @@ pub fn run() {
             commands::ai::detect_integrations,
             commands::replace::replace_preview,
             commands::replace::replace_apply,
+            commands::terminal::term_open,
+            commands::terminal::term_write,
+            commands::terminal::term_resize,
+            commands::terminal::term_close,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

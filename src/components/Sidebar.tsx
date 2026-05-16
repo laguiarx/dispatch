@@ -5,13 +5,37 @@ import {
   type StatusFilter,
 } from "@/features/repository/repository.store";
 import { cn } from "@/lib/utils";
-import { I } from "./Icons";
-import { FileRow } from "./FileRow";
-import { CommitComposer } from "./CommitComposer";
-import { FileTree } from "./FileTree";
-import { SearchPanel } from "./SearchPanel";
-import { ResizeHandle } from "./ResizeHandle";
+import { I } from "./icons";
+import { FileRow } from "./file-row";
+import { CommitComposer } from "./commit-composer";
+import { FileTree } from "./file-tree";
+import { SearchPanel } from "./search-panel";
+import { ResizeHandle } from "./resize-handle";
 
+// Top-row tab style (Changes / Files / Search). Same 24px height, radius-1
+// pill, hover/active states pulled from the design system.
+const TAB =
+  "inline-flex items-center gap-1.5 h-6 px-2 rounded-1 text-fg-2 font-medium text-[12px]";
+const TAB_HOVER = "hover:bg-bg-hover hover:text-fg-0";
+const TAB_ACTIVE = "bg-bg-active text-fg-0";
+// Compact mono count badge that sits next to titles. Uses an rgba bg that's
+// theme-aware via a `[data-theme="light"]` override applied below in inline
+// `dark:`-style fallback (we don't use Tailwind's dark variant — see the
+// note in `tailwind.config.js`).
+const COUNT_BADGE =
+  "font-mono text-[10px] text-fg-3 bg-white/[0.04] px-1 py-px rounded-[3px] " +
+  "[:root[data-theme='light']_&]:bg-black/[0.05]";
+
+/**
+ * Left workspace panel — three tabs (Changes / Files / Search). The
+ * Changes tab is the busiest: filter row + status dropdown + reviewed
+ * toggle + staged/unstaged groups + commit composer pinned at the bottom.
+ *
+ * Migrated from the `.sidebar` / `.sb-*` / `.sidebar-*` / `.filter-*` /
+ * `.status-filter*` / `.review-toggle` / `.multiselect-bar*` rules.
+ * Children components (FileRow, FileTree, SearchPanel, CommitComposer)
+ * still own their own CSS — they'll be migrated as separate waves.
+ */
 export function Sidebar() {
   const files = useRepoStore((s) => s.files);
   const reviewedPaths = useRepoStore((s) => s.reviewedPaths);
@@ -131,23 +155,37 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="sidebar">
-      <div className="sb-tabs">
+    <aside
+      className={cn(
+        "relative flex flex-col min-w-0 min-h-0 overflow-hidden",
+        "bg-[color-mix(in_oklab,var(--bg-1)_88%,transparent)]",
+        "border border-bd-2 rounded-[10px] shadow-card",
+        "backdrop-blur-card backdrop-saturate-[140%]",
+      )}
+    >
+      <div className="flex items-center px-2 h-[34px] gap-0.5 border-b border-bd-1 shrink-0">
         <button
-          className={cn("sb-tab", sidebarTab === "changes" && "is-active")}
+          className={cn(TAB, TAB_HOVER, sidebarTab === "changes" && TAB_ACTIVE)}
           onClick={() => setSidebarTab("changes")}
         >
           Changes
-          <span className="sb-tab-count">{files.length}</span>
+          <span
+            className={cn(
+              COUNT_BADGE,
+              sidebarTab === "changes" && "text-fg-1",
+            )}
+          >
+            {files.length}
+          </span>
         </button>
         <button
-          className={cn("sb-tab", sidebarTab === "files" && "is-active")}
+          className={cn(TAB, TAB_HOVER, sidebarTab === "files" && TAB_ACTIVE)}
           onClick={() => setSidebarTab("files")}
         >
           Files
         </button>
         <button
-          className={cn("sb-tab", sidebarTab === "search" && "is-active")}
+          className={cn(TAB, TAB_HOVER, sidebarTab === "search" && TAB_ACTIVE)}
           onClick={() => setSidebarTab("search")}
         >
           Search
@@ -156,23 +194,40 @@ export function Sidebar() {
 
       {sidebarTab === "changes" ? (
         <>
-          <div className="sidebar-head">
-            <div className="sidebar-title-row">
-              <span className="sidebar-title">Changes</span>
-              <span className="sidebar-count">{files.length}</span>
-              <div className="flex-spacer" />
+          <div className="flex flex-col gap-2 px-2.5 pt-2.5 pb-2">
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold text-[13px] tracking-[-0.01em]">
+                Changes
+              </span>
               <span
-                className="diffstat"
+                className={cn(
+                  "font-mono text-[10.5px] text-fg-2 rounded-[3px] px-[5px] py-px",
+                  "bg-white/[0.04] [:root[data-theme='light']_&]:bg-black/[0.05]",
+                )}
+              >
+                {files.length}
+              </span>
+              <span className="flex-1" />
+              <span
+                className="inline-flex gap-1.5 font-mono text-[11px]"
                 title="Total +/− across all changed files"
               >
-                <span className="diffstat-add">+{totals.add}</span>
-                <span className="diffstat-del">−{totals.del}</span>
+                <span className="text-diff-add-mark">+{totals.add}</span>
+                <span className="text-diff-del-mark">−{totals.del}</span>
               </span>
             </div>
-            <div className="filter-row">
-              <span className="filter-icon">{I.search}</span>
+            <div
+              className={cn(
+                "flex items-center gap-1.5 h-[26px] px-2 rounded-2 min-w-0",
+                "bg-bg-2 border border-bd-1",
+                "focus-within:border-accent",
+              )}
+            >
+              <span className="grid place-items-center shrink-0 text-fg-3">
+                {I.search}
+              </span>
               <input
-                className="filter-input"
+                className="flex-1 min-w-0 h-full text-[12px] bg-transparent border-0 outline-none"
                 type="text"
                 placeholder="Filter files…"
                 value={filterText}
@@ -184,7 +239,7 @@ export function Sidebar() {
               />
               {filterText ? (
                 <button
-                  className="filter-clear"
+                  className="grid place-items-center p-0.5 text-fg-3 hover:text-fg-0"
                   onClick={() => setFilterText("")}
                   title="Clear"
                 >
@@ -197,28 +252,48 @@ export function Sidebar() {
                 counts={counts}
               />
             </div>
-            <label className="review-toggle">
+            <label className="flex items-center gap-[7px] text-[12px] text-fg-1 cursor-pointer py-0.5">
               <input
                 type="checkbox"
                 checked={onlyUnreviewed}
                 onChange={(e) => setOnlyUnreviewed(e.target.checked)}
+                className={cn(
+                  // Custom checkbox: appearance-none + Tailwind-drawn check
+                  // via an `::after` rotated-border trick (cheap angle bracket
+                  // rendered as borders rather than an svg).
+                  "appearance-none w-[13px] h-[13px] rounded-[3px]",
+                  "border border-bd-2 bg-bg-2 grid place-items-center cursor-pointer",
+                  "checked:bg-accent checked:border-accent",
+                  "checked:after:content-[''] checked:after:w-[7px] checked:after:h-1",
+                  "checked:after:border-l-[1.5px] checked:after:border-b-[1.5px]",
+                  "checked:after:border-white checked:after:-rotate-45",
+                  "checked:after:-translate-y-px",
+                )}
               />
               <span>Only unreviewed</span>
-              <span className="flex-spacer" />
-              <span className="dim mono">
+              <span className="flex-1" />
+              <span className="text-fg-2 font-mono">
                 {reviewedCount}/{files.length} reviewed
               </span>
             </label>
           </div>
 
-          <div className="sidebar-list">
+          <div
+            className={cn(
+              "flex-1 overflow-y-auto pt-1 pb-3 select-none",
+              "[scrollbar-width:thin] [scrollbar-color:var(--bd-2)_transparent]",
+              "[&::-webkit-scrollbar]:w-2",
+              "[&::-webkit-scrollbar-thumb]:bg-bd-2 [&::-webkit-scrollbar-thumb]:rounded",
+              "[&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-bg-1",
+            )}
+          >
             {stagedFiltered.length > 0 ? (
               <SidebarGroup
                 label="Staged"
                 count={stagedFiltered.length}
                 actions={
                   <button
-                    className="sb-group-action"
+                    className="grid place-items-center w-5 h-5 rounded text-fg-2 transition-colors hover:bg-bg-hover hover:text-fg-0"
                     onClick={(e) => {
                       e.stopPropagation();
                       unstageMany(stagedFiltered.map((f) => f.path));
@@ -255,7 +330,10 @@ export function Sidebar() {
                 actions={
                   <>
                     <button
-                      className="sb-group-action sb-group-action-danger"
+                      className={cn(
+                        "grid place-items-center w-5 h-5 rounded text-fg-2 transition-colors",
+                        "hover:text-diff-del-mark hover:bg-[color-mix(in_oklab,var(--diff-del-mark)_12%,transparent)]",
+                      )}
                       onClick={(e) => {
                         e.stopPropagation();
                         requestDiscardMany(
@@ -268,7 +346,7 @@ export function Sidebar() {
                       {I.undo}
                     </button>
                     <button
-                      className="sb-group-action"
+                      className="grid place-items-center w-5 h-5 rounded text-fg-2 transition-colors hover:bg-bg-hover hover:text-fg-0"
                       onClick={(e) => {
                         e.stopPropagation();
                         stageMany(unstagedFiltered.map((f) => f.path));
@@ -300,10 +378,10 @@ export function Sidebar() {
               </SidebarGroup>
             ) : null}
             {filtered.length === 0 ? (
-              <div className="sidebar-empty mono dim">
+              <div className="px-4 py-5 text-center flex flex-col gap-2 font-mono text-fg-2">
                 <div>No files match.</div>
                 <button
-                  className="link-btn"
+                  className="self-center text-accent text-[12px] hover:underline"
                   onClick={() => {
                     setFilterText("");
                     setStatusFilter("all");
@@ -358,7 +436,12 @@ export function Sidebar() {
           <CommitComposer />
         </>
       ) : sidebarTab === "files" ? (
-        <div className="sidebar-list">
+        <div
+          className={cn(
+            "flex-1 overflow-y-auto pt-1 pb-3 select-none",
+            "[scrollbar-width:thin] [scrollbar-color:var(--bd-2)_transparent]",
+          )}
+        >
           <FileTree />
         </div>
       ) : (
@@ -369,6 +452,11 @@ export function Sidebar() {
   );
 }
 
+/**
+ * Collapsible group used for the Staged / Unstaged sections in the
+ * Changes tab. Header has a chevron, label, count, and an actions cluster
+ * that fades in on hover.
+ */
 function SidebarGroup({
   label,
   count,
@@ -382,18 +470,42 @@ function SidebarGroup({
 }) {
   const [open, setOpen] = useState(true);
   return (
-    <div className="sb-group">
-      <div className="sb-group-head-row">
-        <button className="sb-group-head" onClick={() => setOpen(!open)}>
-          <span className={cn("sb-group-chev", open && "is-open")}>
+    <div className="pt-1.5 pb-0.5 group">
+      <div className="flex items-center gap-1 pr-2">
+        <button
+          className={cn(
+            "flex items-center gap-1.5 px-3 py-1 flex-1 min-w-0 text-left",
+            "font-mono text-[10.5px] uppercase tracking-[0.06em] text-fg-3",
+            "hover:text-fg-1",
+          )}
+          onClick={() => setOpen(!open)}
+        >
+          <span
+            className={cn(
+              "grid place-items-center transition-transform duration-[120ms] text-fg-3",
+              open ? "rotate-0" : "-rotate-90",
+            )}
+          >
             {I.chevron}
           </span>
-          <span className="sb-group-label">{label}</span>
-          <span className="sb-group-count">{count}</span>
+          <span>{label}</span>
+          <span className="text-fg-3">{count}</span>
         </button>
-        {actions ? <div className="sb-group-actions">{actions}</div> : null}
+        {actions ? (
+          <div
+            // Action cluster stays hidden until the group is hovered.
+            // `group-hover:` reveals it; `focus-within:` keeps it open
+            // while one of the buttons has focus.
+            className={cn(
+              "inline-flex items-center gap-0.5 opacity-0 transition-opacity duration-100",
+              "group-hover:opacity-100 focus-within:opacity-100",
+            )}
+          >
+            {actions}
+          </div>
+        ) : null}
       </div>
-      {open ? <div className="sb-group-body">{children}</div> : null}
+      {open ? <div>{children}</div> : null}
     </div>
   );
 }
@@ -451,25 +563,49 @@ function StatusFilterDropdown({
   const isFiltered = value !== "all";
 
   return (
-    <div className="status-filter" ref={ref}>
+    <div className="relative inline-flex items-center shrink-0 h-full" ref={ref}>
       <button
         type="button"
-        className={cn("status-filter-btn", isFiltered && "is-on")}
+        className={cn(
+          "inline-flex items-center gap-1 h-5 min-w-5 pl-[7px] pr-1.5 rounded-1",
+          "font-mono text-[10.5px] whitespace-nowrap shrink-0 border",
+          isFiltered
+            ? "text-accent bg-accent-soft border-[color-mix(in_oklab,var(--accent)_40%,transparent)]"
+            : "text-fg-2 bg-transparent border-bd-1 hover:text-fg-0 hover:bg-bg-hover",
+        )}
         onClick={() => setOpen((v) => !v)}
         title={`Status filter: ${current.label}`}
       >
         {current.dot ? (
           <span
-            className="status-filter-dot"
+            className="w-1.5 h-1.5 rounded-full shrink-0"
             style={{ background: current.dot }}
           />
         ) : null}
-        <span className="status-filter-label">{current.letter}</span>
-        <span className="status-filter-count mono">{currentCount}</span>
-        <span className="status-filter-chev">{I.chevron}</span>
+        <span className="font-medium">{current.letter}</span>
+        <span
+          className={cn(
+            "text-[10px]",
+            isFiltered
+              ? "text-[color-mix(in_oklab,var(--accent)_75%,var(--fg-0))]"
+              : "text-fg-3",
+          )}
+        >
+          {currentCount}
+        </span>
+        <span className="inline-flex items-center ml-0.5 text-fg-3 [&_svg]:h-[9px] [&_svg]:w-[9px]">
+          {I.chevron}
+        </span>
       </button>
       {open ? (
-        <div className="status-filter-menu" role="menu">
+        <div
+          role="menu"
+          className={cn(
+            "absolute top-[calc(100%+6px)] right-0 z-[100] min-w-[200px]",
+            "py-1 bg-bg-1 border border-bd-2 rounded-3",
+            "shadow-[0_18px_50px_rgba(0,0,0,0.5),0_0_0_0.5px_rgba(255,255,255,0.04)]",
+          )}
+        >
           {STATUS_OPTIONS.map((opt) => {
             const c = opt.id === "all" ? counts.all : counts[opt.id] || 0;
             return (
@@ -478,8 +614,10 @@ function StatusFilterDropdown({
                 role="menuitemradio"
                 aria-checked={value === opt.id}
                 className={cn(
-                  "status-filter-item",
-                  value === opt.id && "is-active",
+                  "grid grid-cols-[14px_8px_1fr_auto] items-center gap-2 w-full",
+                  "px-3 py-1.5 text-[12px] text-left bg-transparent",
+                  value === opt.id ? "text-fg-0" : "text-fg-1",
+                  "hover:bg-bg-hover hover:text-fg-0",
                 )}
                 onClick={() => {
                   onChange(opt.id);
@@ -487,19 +625,19 @@ function StatusFilterDropdown({
                 }}
                 type="button"
               >
-                <span className="status-filter-mark">
+                <span className="grid place-items-center text-accent [&_svg]:h-2.5 [&_svg]:w-2.5">
                   {value === opt.id ? I.check : null}
                 </span>
                 {opt.dot ? (
                   <span
-                    className="status-filter-dot"
+                    className="w-1.5 h-1.5 rounded-full shrink-0"
                     style={{ background: opt.dot }}
                   />
                 ) : (
-                  <span className="status-filter-dot-empty" />
+                  <span className="w-1.5 h-1.5" />
                 )}
-                <span className="status-filter-item-label">{opt.label}</span>
-                <span className="status-filter-item-count mono dim">{c}</span>
+                <span className="whitespace-nowrap">{opt.label}</span>
+                <span className="font-mono text-fg-2 text-[10.5px]">{c}</span>
               </button>
             );
           })}
@@ -512,12 +650,6 @@ function StatusFilterDropdown({
 /**
  * Single-row pill that shows up when the user multi-selects files.
  * Layout: `[N] [+ Stage] [- Unstage] [✓] [⌫]   [✕]`
- *
- * Stage/Unstage keep their text labels because they're the headline
- * actions, and only one of them shows at a time (depending on which side
- * of the staged/unstaged divide the selection lives on). Reviewed and
- * Discard are icon-only with tooltips so the bar stays single-row at
- * narrow sidebar widths (was wrapping into an ugly 2-row pill before).
  */
 function MultiSelectBar({
   count,
@@ -540,12 +672,37 @@ function MultiSelectBar({
   canUnstage: boolean;
   canDiscard: boolean;
 }) {
+  // Common pill-button styling for the labelled actions.
+  const btnBase =
+    "inline-flex items-center gap-1 h-[22px] px-2 text-[11px] rounded-full " +
+    "bg-transparent border-0 text-fg-1 whitespace-nowrap min-w-0 " +
+    "hover:bg-[color-mix(in_oklab,var(--accent)_18%,transparent)] hover:text-fg-0 " +
+    "[&_svg]:h-[11px] [&_svg]:w-[11px]";
+  const iconBase =
+    "grid place-items-center w-[22px] h-[22px] rounded-full border-0 shrink-0 " +
+    "bg-transparent text-fg-1 [&_svg]:h-3 [&_svg]:w-3 " +
+    "hover:bg-[color-mix(in_oklab,var(--accent)_18%,transparent)] hover:text-fg-0";
   return (
-    <div className="multiselect-bar">
-      <span className="multiselect-bar-count">{count}</span>
+    <div
+      className={cn(
+        "flex items-center gap-1 shrink-0 mx-2.5 my-2 pl-2.5 pr-1.5 py-[5px]",
+        "rounded-full min-w-0 text-[11.5px]",
+        "bg-[color-mix(in_oklab,var(--accent-soft)_88%,var(--bg-1))]",
+        "border border-[color-mix(in_oklab,var(--accent)_45%,transparent)]",
+        "shadow-[0_4px_12px_rgba(0,0,0,0.25),0_0_0_0.5px_rgba(255,255,255,0.04)]",
+      )}
+    >
+      <span
+        className={cn(
+          "text-accent font-semibold whitespace-nowrap pr-1.5 shrink-0",
+          "border-r border-[color-mix(in_oklab,var(--accent)_30%,transparent)]",
+        )}
+      >
+        {count}
+      </span>
       {canStage ? (
         <button
-          className="multiselect-bar-btn multiselect-bar-btn-primary"
+          className={cn(btnBase, "overflow-hidden text-ellipsis")}
           onClick={onStage}
           title="Stage selected files"
           type="button"
@@ -556,7 +713,7 @@ function MultiSelectBar({
       ) : null}
       {canUnstage ? (
         <button
-          className="multiselect-bar-btn multiselect-bar-btn-primary"
+          className={cn(btnBase, "overflow-hidden text-ellipsis")}
           onClick={onUnstage}
           title="Unstage selected files"
           type="button"
@@ -566,7 +723,7 @@ function MultiSelectBar({
         </button>
       ) : null}
       <button
-        className="multiselect-bar-btn"
+        className={btnBase}
         onClick={onMarkReviewed}
         title="Toggle reviewed (⌘⇧M)"
         type="button"
@@ -576,7 +733,10 @@ function MultiSelectBar({
       </button>
       {canDiscard ? (
         <button
-          className="multiselect-bar-icon is-danger"
+          className={cn(
+            iconBase,
+            "hover:!text-git-del hover:!bg-[color-mix(in_oklab,var(--git-del)_18%,transparent)]",
+          )}
           onClick={onDiscard}
           title="Discard selected files"
           aria-label="Discard"
@@ -585,9 +745,9 @@ function MultiSelectBar({
           {I.discard}
         </button>
       ) : null}
-      <span className="flex-spacer" />
+      <span className="flex-1" />
       <button
-        className="multiselect-bar-icon multiselect-bar-clear"
+        className={cn(iconBase, "text-fg-2")}
         onClick={onClear}
         title="Clear selection"
         aria-label="Clear selection"

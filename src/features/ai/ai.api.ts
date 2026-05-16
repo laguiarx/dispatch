@@ -5,12 +5,29 @@ export type Integration = {
   id: string;
   name: string;
   purpose: string;
+  /** Human-readable description of how to install (e.g. "brew install gh"). */
   installHint: string;
+  /**
+   * The exact shell command the integrated terminal should run when the user
+   * clicks the ▶ button next to this row. Sometimes equal to `installHint`,
+   * sometimes longer (Homebrew's installer is multi-step curl-piped bash).
+   */
+  installCommand: string;
+  /**
+   * The id of another integration whose absence makes `installCommand`
+   * fail. In practice always `"brew"` for the tool rows — the onboarding
+   * UI grays out the ▶ button until Homebrew is installed.
+   */
+  requires: string | null;
   available: boolean;
 };
 
-export async function detectIntegrations(): Promise<Integration[]> {
-  return invoke<Integration[]>("detect_integrations");
+export type IntegrationsReport = {
+  integrations: Integration[];
+};
+
+export async function detectIntegrations(): Promise<IntegrationsReport> {
+  return invoke<IntegrationsReport>("detect_integrations");
 }
 
 export async function detectAiClis(): Promise<AiCliInfo[]> {

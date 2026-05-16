@@ -26,14 +26,36 @@ export function splitShortcut(input: string): string[] {
   return keys;
 }
 
+/**
+ * Tailwind classes for an individual key chip. Pulled into a constant so
+ * the standalone case and the in-group case stay visually identical — if
+ * we tweak the chip look, there's exactly one place to edit. No left
+ * margin here; spacing is handled by the wrapper (the standalone branch
+ * adds `ml-1.5`, the multi-chip branch uses `gap-[3px]`).
+ *
+ * First component to be migrated from the legacy `.kbd` / `.shortcut`
+ * rules in `index.css` — those have been removed.
+ */
+export const CHIP =
+  "inline-flex items-baseline font-mono text-[10.5px] px-[5px] py-px " +
+  "rounded-[3px] border border-bd-2 bg-bg-2 text-fg-2";
+
+// Outermost Kbd element carries `data-kbd` so parents can override its
+// margin via the arbitrary selector `[&_[data-kbd]]:!m-0`. The previous
+// scheme used the `.kbd` className for the same purpose; we kept it as a
+// marker (no styling) until the index.css shim was removed in the final
+// cleanup wave.
 export function Kbd({ children }: { children: ReactNode }) {
   if (typeof children === "string") {
     const keys = splitShortcut(children);
     if (keys.length > 1) {
       return (
-        <span className="shortcut">
+        <span
+          data-kbd
+          className="inline-flex items-center gap-[3px] ml-1.5 align-baseline"
+        >
           {keys.map((k, i) => (
-            <span key={i} className="kbd">
+            <span key={i} className={CHIP}>
               {k}
             </span>
           ))}
@@ -41,5 +63,9 @@ export function Kbd({ children }: { children: ReactNode }) {
       );
     }
   }
-  return <span className="kbd">{children}</span>;
+  return (
+    <span data-kbd className={`${CHIP} ml-1.5`}>
+      {children}
+    </span>
+  );
 }

@@ -16,7 +16,7 @@ import type {
   SearchScope,
 } from "@/features/search/search.types";
 import type { AiKind } from "@/features/ai/ai.types";
-import type { ToastKind, ToastMessage } from "@/components/Toast";
+import type { ToastKind, ToastMessage } from "@/components/toast";
 import {
   pushRecentRepo,
   readLastRepoPath,
@@ -209,6 +209,37 @@ type State = {
   /** Global Git/AI dropdown in the topbar (commit / PR / summary / risk). */
   gitMenuOpen: boolean;
 
+  /**
+   * Integrated terminal drawer at the bottom of the workspace. Toggled with
+   * `Ctrl+\`` and a remembered height between sessions. v1 ships a single
+   * PTY per window — the actual session id is owned by `TerminalDrawer.tsx`,
+   * the store only tracks UI visibility/size so that closing the drawer
+   * preserves drawer height across re-opens.
+   */
+  /**
+   * Whether the terminal drawer is currently VISIBLE. Decoupled from
+   * `terminalSessionAlive` so the user can hide the drawer (X button)
+   * without losing the running shell — opening it again resumes the same
+   * scrollback / running process.
+   */
+  terminalOpen: boolean;
+  /**
+   * Whether the PTY session backing the terminal is alive. Becomes true the
+   * first time the drawer is opened (or a command is queued from
+   * onboarding); cleared only when the user explicitly kills it via the
+   * trash button in the drawer header, when the repo changes, or when the
+   * shell itself exits. Hiding the drawer does NOT set this to false.
+   */
+  terminalSessionAlive: boolean;
+  terminalHeight: number;
+  /**
+   * Command queued for the integrated terminal — picked up by `TerminalDrawer`
+   * once its PTY session is ready, written verbatim (with a trailing `\n`),
+   * then cleared. Used by the onboarding modal's ▶ install buttons so a
+   * single click both opens the drawer and types the command for the user.
+   */
+  pendingTerminalCommand: string | null;
+
   loading: boolean;
   errorMessage: string | null;
   confirm: ConfirmRequest | null;
@@ -248,6 +279,29 @@ type State = {
   setRightSidebarWidth: (px: number) => void;
   toggleLeftSidebar: () => void;
   toggleRightSidebar: () => void;
+  /**
+   * Show/hide the integrated terminal drawer. Hiding does NOT kill the PTY
+   * — re-opening resumes the same session. To actually destroy the
+   * session call `killTerminalSession`.
+   */
+  setTerminalOpen: (open: boolean) => void;
+  /** Flip the terminal drawer's visibility (used by `⌘\`` / `⌘J`). */
+  toggleTerminal: () => void;
+  /**
+   * Kill the PTY session, dispose xterm, and hide the drawer. Wired to the
+   * trash icon in the drawer header — the X next to it only HIDES.
+   */
+  killTerminalSession: () => void;
+  /** Persist the drawer's height after a user resize. */
+  setTerminalHeight: (px: number) => void;
+  /**
+   * Open the integrated terminal (if not already open) and queue `cmd` to be
+   * typed + run as soon as the PTY is ready. The TerminalDrawer reads
+   * `pendingTerminalCommand` from the store and calls
+   * `clearPendingTerminalCommand` once it has injected it.
+   */
+  runInTerminal: (cmd: string) => void;
+  clearPendingTerminalCommand: () => void;
   setSettingsOpen: (open: boolean) => void;
   setShortcutsOpen: (open: boolean) => void;
   setOnboardingOpen: (open: boolean) => void;
@@ -434,6 +488,27 @@ type State = {
   pushToast: (text: string, kind?: ToastKind) => void;
   setError: (message: string | null) => void;
 };
+
+/** Persisted height of the integrated terminal drawer (px). */
+const TERMINAL_HEIGHT_KEY = "ai-code-review:terminal-height";
+function readTerminalHeight(): number {
+  try {
+    const raw = localStorage.getItem(TERMINAL_HEIGHT_KEY);
+    if (!raw) return 260;
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return 260;
+    return Math.max(120, Math.min(800, Math.round(n)));
+  } catch {
+    return 260;
+  }
+}
+function writeTerminalHeight(px: number): void {
+  try {
+    localStorage.setItem(TERMINAL_HEIGHT_KEY, String(px));
+  } catch {
+    /* ignore */
+  }
+}
 
 function reviewedStorageKey(repoPath: string): string {
   return `ai-code-review:reviewed:${repoPath}`;
@@ -676,6 +751,11 @@ export const useRepoStore = create<State>((set, get) => ({
   editorMenuOpen: false,
   gitMenuOpen: false,
 
+  terminalOpen: false,
+  terminalSessionAlive: false,
+  terminalHeight: readTerminalHeight(),
+  pendingTerminalCommand: null,
+
   loading: false,
   errorMessage: null,
   confirm: null,
@@ -875,6 +955,44 @@ export const useRepoStore = create<State>((set, get) => ({
       writeSettings(next);
       return { settings: next };
     }),
+  setTerminalOpen: (terminalOpen) =>
+    set((s) => ({
+      terminalOpen,
+      // Opening the drawer guarantees a live session; closing leaves
+      // whatever session was running intact (hidden but alive).
+      terminalSessionAlive: terminalOpen ? true : s.terminalSessionAlive,
+    })),
+  toggleTerminal: () =>
+    set((s) => {
+      const next = !s.terminalOpen;
+      return {
+        terminalOpen: next,
+        terminalSessionAlive: next ? true : s.terminalSessionAlive,
+      };
+    }),
+  killTerminalSession: () =>
+    set({
+      terminalOpen: false,
+      terminalSessionAlive: false,
+      pendingTerminalCommand: null,
+    }),
+  setTerminalHeight: (px) => {
+    // Clamp so the drawer can't eat the entire main pane or collapse below
+    // a usable shell height (4-5 lines).
+    const h = Math.max(120, Math.min(800, Math.round(px)));
+    set((s) => {
+      if (s.terminalHeight === h) return s;
+      writeTerminalHeight(h);
+      return { terminalHeight: h };
+    });
+  },
+  runInTerminal: (cmd) =>
+    set({
+      terminalOpen: true,
+      terminalSessionAlive: true,
+      pendingTerminalCommand: cmd,
+    }),
+  clearPendingTerminalCommand: () => set({ pendingTerminalCommand: null }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
   setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),
   setOnboardingOpen: (onboardingOpen) => set({ onboardingOpen }),
@@ -2151,7 +2269,7 @@ export const useRepoStore = create<State>((set, get) => ({
     set({
       confirm: {
         title: `Revert hunk #${hunkIdx + 1}?`,
-        body: `This permanently discards the working-tree changes for this hunk in ${filePath}. It can't be undone from Review Desk.`,
+        body: `This permanently discards the working-tree changes for this hunk in ${filePath}. It can't be undone from Squint.`,
         confirmLabel: "Revert",
         danger: true,
         onConfirm: async () => {
@@ -2199,7 +2317,7 @@ export const useRepoStore = create<State>((set, get) => ({
     set({
       confirm: {
         title: `Discard ${count} file${count === 1 ? "" : "s"}?`,
-        body: `This permanently reverts the working-tree changes for ${count} file${count === 1 ? "" : "s"}. Untracked files will be deleted. It can't be undone from Review Desk.`,
+        body: `This permanently reverts the working-tree changes for ${count} file${count === 1 ? "" : "s"}. Untracked files will be deleted. It can't be undone from Squint.`,
         confirmLabel: "Discard all",
         danger: true,
         onConfirm: async () => {
@@ -2235,7 +2353,7 @@ export const useRepoStore = create<State>((set, get) => ({
     set({
       confirm: {
         title: `Discard changes to ${path}?`,
-        body: `This permanently removes ${file.additions + file.deletions} line changes in this file. It can't be undone from Review Desk.`,
+        body: `This permanently removes ${file.additions + file.deletions} line changes in this file. It can't be undone from Squint.`,
         confirmLabel: "Discard changes",
         danger: true,
         onConfirm: async () => {

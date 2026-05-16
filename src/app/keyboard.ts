@@ -29,6 +29,7 @@ export function useKeyboardShortcuts() {
   const toggleLeftSidebar = useRepoStore((s) => s.toggleLeftSidebar);
   const toggleRightSidebar = useRepoStore((s) => s.toggleRightSidebar);
   const setLeftSidebarVisible = useRepoStore((s) => s.setLeftSidebarVisible);
+  const toggleTerminal = useRepoStore((s) => s.toggleTerminal);
 
   // Chord prefix state — survives across keydowns within a 1.5s window.
   const chordPrefixRef = useRef(false);
@@ -125,6 +126,20 @@ export function useKeyboardShortcuts() {
         toggleRightSidebar();
         return;
       }
+      // ⌘` and ⌘J → toggle integrated terminal. `e.key === "`"` is the
+      // backtick the user actually pressed; `code === "KeyJ"` covers the
+      // ⌘J alternative (Cmd+J would print "∆" with some keyboard layouts,
+      // so we match on the physical code).
+      if (
+        mod &&
+        !e.shiftKey &&
+        !e.altKey &&
+        (e.key === "`" || code === "KeyJ")
+      ) {
+        e.preventDefault();
+        toggleTerminal();
+        return;
+      }
       if (!repository) return;
 
       // ⌘⇧F → Search tab (and focus its input)
@@ -200,7 +215,9 @@ export function useKeyboardShortcuts() {
         requestDiscard(selectedFilePath);
         return;
       }
-      // ⌥↓ / ⌥↑ → next / previous changed file
+      // ⌥↓ / ⌥↑ → next / previous changed file. Holding the arrow fires
+      // key-repeat at the OS rate (~30Hz on macOS); navigation must keep
+      // up — we want users to be able to fly through a changeset.
       if (e.altKey && !mod && e.key === "ArrowDown") {
         e.preventDefault();
         selectAdjacentFile(1);
@@ -277,5 +294,6 @@ export function useKeyboardShortcuts() {
     toggleLeftSidebar,
     toggleRightSidebar,
     setLeftSidebarVisible,
+    toggleTerminal,
   ]);
 }

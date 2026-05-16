@@ -1,20 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { TopBar } from "@/components/TopBar";
-import { Sidebar } from "@/components/Sidebar";
-import { DiffPane } from "@/components/DiffPane";
-import { TabStrip } from "@/components/TabStrip";
-import { AiOutputDialog } from "@/components/AiOutputDialog";
-import { PrBranchChoiceDialog } from "@/components/PrBranchChoiceDialog";
-import { PrFlowDialog } from "@/components/PrFlowDialog";
-import { ReplaceOverlay } from "@/components/ReplaceOverlay";
-import { CommandPalette } from "@/components/CommandPalette";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { SettingsDialog } from "@/components/SettingsDialog";
-import { ShortcutsDialog } from "@/components/ShortcutsDialog";
-import { StashPromptDialog } from "@/components/StashPromptDialog";
-import { OnboardingModal } from "@/components/OnboardingModal";
-import { Toast } from "@/components/Toast";
-import { NoRepoState } from "@/components/NoRepoState";
+import { TopBar } from "@/components/top-bar";
+import { Sidebar } from "@/components/sidebar";
+import { DiffPane } from "@/components/diff-pane";
+import { TabStrip } from "@/components/tab-strip";
+import { AiOutputDialog } from "@/components/ai-output-dialog";
+import { PrBranchChoiceDialog } from "@/components/pr-branch-choice-dialog";
+import { PrFlowDialog } from "@/components/pr-flow-dialog";
+import { ReplaceOverlay } from "@/components/replace-overlay";
+import { Spinner } from "@/components/spinner";
+import { TerminalDrawer } from "@/components/terminal-drawer";
+import { CommandPalette } from "@/components/command-palette";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { SettingsDialog } from "@/components/settings-dialog";
+import { ShortcutsDialog } from "@/components/shortcuts-dialog";
+import { StashPromptDialog } from "@/components/stash-prompt-dialog";
+import { OnboardingModal } from "@/components/onboarding-modal";
+import { Toast } from "@/components/toast";
+import { NoRepoState } from "@/components/no-repo-state";
+import { cn } from "@/lib/utils";
 import {
   getLastRepoPath,
   useRepoStore,
@@ -28,7 +31,7 @@ import {
 } from "@/lib/theme";
 import { isTauri } from "@/lib/tauri";
 import { useKeyboardShortcuts } from "./keyboard";
-import { useNativeMenu } from "./menuEvents";
+import { useNativeMenu } from "./menu-events";
 import { buildCommands, buildFileCommands } from "./commands";
 
 export function App() {
@@ -248,12 +251,19 @@ export function App() {
     paletteMode === "files" ? fileCommands : actionCommands;
 
   return (
-    <div className="app-root">
+    <div
+      // Outermost shell. Outer 6px padding + gap so the topbar and
+      // workspace each sit as separate floating cards with breathing room.
+      className="h-screen relative flex flex-col gap-1.5 p-1.5 bg-bg-0 overflow-hidden"
+    >
       <TopBar />
 
       {repository ? (
         <div
-          className="workspace"
+          // Three-column workspace grid (left sidebar · main · optional
+          // right). Width comes from the inline `gridTemplateColumns`
+          // style so the sidebar can collapse to zero when hidden.
+          className="flex-1 grid min-h-0 overflow-hidden gap-1.5"
           style={{
             gridTemplateColumns: [
               settings.leftSidebarVisible
@@ -266,18 +276,40 @@ export function App() {
           }}
         >
           {settings.leftSidebarVisible ? <Sidebar /> : null}
-          <div className="main-col">
-            <TabStrip />
-            <DiffPane />
+          {/* Right column of the workspace grid: main-col on top, terminal
+              drawer beneath it. Keeping them in the same flex-column means
+              the terminal opening only shortens the diff pane — the
+              sidebar (left column) keeps its full workspace height. */}
+          <div className="flex flex-col min-w-0 min-h-0 gap-1.5">
+            <div
+              // The "main column" floating card — same visual treatment
+              // as the sidebars / terminal drawer so the three workspace
+              // panes read as one consistent set of bubbles.
+              className={cn(
+                "flex flex-col flex-1 min-w-0 min-h-0 overflow-hidden",
+                "bg-[color-mix(in_oklab,var(--bg-0)_92%,transparent)]",
+                "border border-bd-2 rounded-[10px]",
+                "shadow-[0_12px_32px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.25)]",
+                "backdrop-blur-card backdrop-saturate-[140%]",
+              )}
+            >
+              <TabStrip />
+              <DiffPane />
+            </div>
+            <TerminalDrawer />
           </div>
           {/* Right sidebar removed — per-file actions live inline on each
               FileRow in the left sidebar, Git/AI lives in the topbar, and
               AI output opens as a centered modal (`AiOutputDialog`). */}
         </div>
       ) : bootstrapping ? (
-        <div className="boot-splash" role="status" aria-live="polite">
-          <span className="ai-spinner" />
-          <span className="boot-splash-label dim">Opening project…</span>
+        <div
+          className="flex-1 grid place-items-center gap-3.5 grid-flow-row bg-bg-0"
+          role="status"
+          aria-live="polite"
+        >
+          <Spinner className="w-[22px] h-[22px]" />
+          <span className="text-[12px] text-fg-2">Opening project…</span>
         </div>
       ) : (
         <div style={{ flex: 1, minHeight: 0 }}>
@@ -286,13 +318,22 @@ export function App() {
       )}
 
       {errorMessage ? (
-        <div className="error-banner">
-          <span className="mono" style={{ fontWeight: 600 }}>
-            Error
-          </span>
+        <div
+          className={cn(
+            "flex items-center gap-2 px-3 py-1.5 text-[11.5px]",
+            "bg-[color-mix(in_oklab,var(--diff-del-mark)_12%,transparent)]",
+            "border-t border-[color-mix(in_oklab,var(--diff-del-mark)_35%,transparent)]",
+            "text-diff-del-mark",
+          )}
+        >
+          <span className="font-mono font-semibold">Error</span>
           <span>{errorMessage}</span>
           <button
-            className="error-banner-dismiss"
+            className={cn(
+              "ml-auto px-1.5 py-0.5 rounded-[3px] bg-transparent border-0 cursor-pointer",
+              "text-diff-del-mark text-[10.5px] uppercase tracking-[0.04em]",
+              "hover:bg-white/[0.05]",
+            )}
             onClick={() => setError(null)}
           >
             dismiss

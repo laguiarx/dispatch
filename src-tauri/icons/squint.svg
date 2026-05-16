@@ -1,0 +1,36 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Squint app icon">
+  <!--
+    macOS app icon — matches the bbox proportions of WhatsApp / Discord /
+    Cursor (the cluster of "well-sized" community apps in the Dock).
+    Canvas 1024², rounded square inset to 850 × 850 (87 px margin per side,
+    ~83 % canvas fill). Corner radius scaled proportionally from Apple's
+    Big Sur template (185.4 / 824) to keep the squircle's visual feel.
+
+    Earlier revisions used the conservative 824 / 100-px-margin variant
+    from Apple's bundled Production Template; that left the icon 6 px
+    smaller on each side than common neighbours, which read as
+    "noticeably smaller". The current geometry matches what real apps
+    actually ship.
+
+    Mark coordinates derived from the original 1024-canvas drawing by
+    scaling 0.8301× and offsetting by 87:
+      x' = round(x_old · 0.8301) + 87
+      y' = round(y_old · 0.8301) + 87
+  -->
+  <defs>
+    <clipPath id="squint-icon-mask">
+      <rect x="87" y="87" width="850" height="850" rx="191" ry="191" />
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#squint-icon-mask)">
+    <rect x="87" y="87" width="850" height="850" fill="#0B0B0F" />
+
+    <!-- Geometric squint mark: two filled apertures separated by a
+         negative-space slit. -->
+    <g fill="#5B5BD6" shape-rendering="geometricPrecision">
+      <path d="M280 404L512 492L744 404V495H280V404Z" />
+      <path d="M280 628L512 540L744 628V535H280V628Z" />
+    </g>
+  </g>
+</svg>

@@ -107,6 +107,18 @@ fn build_cli_invocation(
 
 /// One of the optional integrations Review Desk knows about. Reported by
 /// `detect_integrations` so the onboarding modal can render a tidy checklist.
+///
+/// `install_command` is the actual shell command we can pipe into the
+/// integrated terminal when the user clicks ▶ — distinct from the human
+/// `install_hint` displayed underneath. We split the two because the
+/// official Homebrew installer is a multi-line `curl | bash`, which reads
+/// awkwardly as a hint but executes fine as a command.
+///
+/// `requires` names a different integration whose absence would make
+/// `install_command` fail (e.g. `git/gh` need `brew`, `claude/codex` need
+/// `npm`). The frontend uses this to disable the ▶ button with a
+/// "Install <prereq> first" tooltip rather than letting the user run
+/// something that's guaranteed to error in their terminal.
 #[derive(Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Integration {
@@ -114,48 +126,79 @@ pub struct Integration {
     pub name: String,
     pub purpose: String,
     pub install_hint: String,
+    pub install_command: String,
+    pub requires: Option<String>,
     pub available: bool,
 }
 
+/// Detection result returned to the onboarding modal. All four tools
+/// (git, gh, claude-code, codex) install via Homebrew now, so the only
+/// prerequisite we need to surface separately is brew itself — which is
+/// already its own row in `integrations`.
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IntegrationsReport {
+    pub integrations: Vec<Integration>,
+}
+
 #[tauri::command]
-pub fn detect_integrations() -> AppResult<Vec<Integration>> {
-    let rows: &[(&str, &str, &str, &str)] = &[
-        ("git", "Git", "Required — diff, stage, commit, branch", "brew install git"),
+pub fn detect_integrations() -> AppResult<IntegrationsReport> {
+    // Each row: (id, name, purpose, hint, command, requires)
+    let rows: &[(&str, &str, &str, &str, &str, Option<&str>)] = &[
+        (
+            "brew",
+            "Homebrew",
+            "Package manager — prerequisite for installing git and gh below.",
+            "Official installer from brew.sh",
+            "/bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"",
+            None,
+        ),
+        (
+            "git",
+            "Git",
+            "Required — diff, stage, commit, branch operations.",
+            "brew install git",
+            "brew install git",
+            Some("brew"),
+        ),
         (
             "gh",
             "GitHub CLI",
-            "Open PRs and pull repository metadata",
+            "Open PRs and pull repository metadata.",
+            "brew install gh && gh auth login",
             "brew install gh",
+            Some("brew"),
         ),
         (
             "claude",
             "Claude Code",
-            "Powers the AI Assist actions",
-            "brew install claude",
+            "Powers the AI Assist actions (commit / PR / summary / risk).",
+            "brew install --cask claude-code",
+            "brew install --cask claude-code",
+            Some("brew"),
         ),
         (
             "codex",
             "Codex CLI",
-            "Alternative backend for AI Assist",
-            "npm install -g @openai/codex",
-        ),
-        (
-            "brew",
-            "Homebrew",
-            "Convenient way to install the other tools",
-            "Install from https://brew.sh",
+            "Alternative backend for AI Assist.",
+            "brew install --cask codex",
+            "brew install --cask codex",
+            Some("brew"),
         ),
     ];
-    Ok(rows
+    let integrations = rows
         .iter()
-        .map(|(id, name, purpose, hint)| Integration {
+        .map(|(id, name, purpose, hint, command, requires)| Integration {
             id: id.to_string(),
             name: name.to_string(),
             purpose: purpose.to_string(),
             install_hint: hint.to_string(),
+            install_command: command.to_string(),
+            requires: requires.map(|s| s.to_string()),
             available: which(id),
         })
-        .collect())
+        .collect();
+    Ok(IntegrationsReport { integrations })
 }
 
 /// Best-effort `which` — checks each PATH entry for an executable file.

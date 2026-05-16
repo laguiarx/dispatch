@@ -1,5 +1,5 @@
-import type { CommandItem } from "@/components/CommandPalette";
-import { STATUS_META } from "@/components/Icons";
+import type { CommandItem } from "@/components/command-palette";
+import { STATUS_META } from "@/components/icons";
 import type { ChangedFile } from "@/features/git/git.types";
 import type { AiKind } from "@/features/ai/ai.types";
 import { THEME_PRESETS, type Theme } from "@/lib/theme";
