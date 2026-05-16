@@ -1,8 +1,8 @@
 import type { FontPreset, MonoPreset, Theme } from "./theme";
 
-const LAST_REPO_KEY = "ai-code-review:last-repo";
-const RECENT_REPOS_KEY = "ai-code-review:recent-repos";
-const SETTINGS_KEY = "ai-code-review:settings";
+const LAST_REPO_KEY = "squint:last-repo";
+const RECENT_REPOS_KEY = "squint:recent-repos";
+const SETTINGS_KEY = "squint:settings";
 
 const MAX_RECENT = 10;
 

@@ -490,7 +490,7 @@ type State = {
 };
 
 /** Persisted height of the integrated terminal drawer (px). */
-const TERMINAL_HEIGHT_KEY = "ai-code-review:terminal-height";
+const TERMINAL_HEIGHT_KEY = "squint:terminal-height";
 function readTerminalHeight(): number {
   try {
     const raw = localStorage.getItem(TERMINAL_HEIGHT_KEY);
@@ -511,7 +511,7 @@ function writeTerminalHeight(px: number): void {
 }
 
 function reviewedStorageKey(repoPath: string): string {
-  return `ai-code-review:reviewed:${repoPath}`;
+  return `squint:reviewed:${repoPath}`;
 }
 
 function loadReviewed(repoPath: string): Set<string> {
