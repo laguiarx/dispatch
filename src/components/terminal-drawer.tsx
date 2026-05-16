@@ -19,16 +19,6 @@ const DRAWER =
   "border border-bd-2 rounded-[10px] " +
   "shadow-[0_12px_32px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.25)] " +
   "backdrop-blur-card backdrop-saturate-[140%]";
-// Drag-resize handle straddling the top edge. Same metrics as the sidebar
-// resize handles, just horizontal. 80ms hover delay prevents flashing on
-// accidental hover.
-const RESIZE_HANDLE =
-  "absolute top-[-2px] left-0 right-0 h-[5px] z-20 cursor-row-resize " +
-  "bg-transparent transition-[background-color] duration-100 [transition-delay:80ms] " +
-  "hover:bg-[color-mix(in_oklab,var(--accent)_40%,transparent)] " +
-  "hover:[transition-delay:0ms] " +
-  "active:bg-[color-mix(in_oklab,var(--accent)_40%,transparent)] " +
-  "active:[transition-delay:0ms]";
 const HEADER =
   "flex items-center justify-between h-[26px] px-2.5 shrink-0 " +
   "bg-bg-1 border-b border-bd-1 select-none";
@@ -76,7 +66,6 @@ export function TerminalDrawer() {
   const sessionAlive = useRepoStore((s) => s.terminalSessionAlive);
   const repository = useRepoStore((s) => s.repository);
   const height = useRepoStore((s) => s.terminalHeight);
-  const setTerminalHeight = useRepoStore((s) => s.setTerminalHeight);
   const setTerminalOpen = useRepoStore((s) => s.setTerminalOpen);
   const killTerminalSession = useRepoStore((s) => s.killTerminalSession);
   const pushToast = useRepoStore((s) => s.pushToast);
@@ -89,7 +78,6 @@ export function TerminalDrawer() {
       cwd={repository?.path ?? null}
       visible={open}
       height={height}
-      setHeight={setTerminalHeight}
       onHide={() => setTerminalOpen(false)}
       onKill={() => killTerminalSession()}
       onError={(msg) => pushToast(msg, "danger")}
@@ -120,7 +108,6 @@ type InnerProps = {
    */
   visible: boolean;
   height: number;
-  setHeight: (px: number) => void;
   /** X button — hide the drawer, keep the session alive. */
   onHide: () => void;
   /** Trash button — kill the PTY and tear down xterm. */
@@ -132,7 +119,6 @@ function TerminalDrawerInner({
   cwd,
   visible,
   height,
-  setHeight,
   onHide,
   onKill,
   onError,
@@ -336,27 +322,6 @@ function TerminalDrawerInner({
     return () => cancelAnimationFrame(raf);
   }, [visible]);
 
-  // Drag-to-resize handle on the top edge.
-  const draggingRef = useRef(false);
-  const onDragMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    draggingRef.current = true;
-    const startY = e.clientY;
-    const startH = height;
-    const onMove = (ev: MouseEvent) => {
-      if (!draggingRef.current) return;
-      const dy = startY - ev.clientY;
-      setHeight(startH + dy);
-    };
-    const onUp = () => {
-      draggingRef.current = false;
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup", onUp);
-    };
-    document.addEventListener("mousemove", onMove);
-    document.addEventListener("mouseup", onUp);
-  };
-
   return (
     <div
       className={DRAWER}
@@ -370,11 +335,6 @@ function TerminalDrawerInner({
       role="region"
       aria-label="Integrated terminal"
     >
-      <div
-        className={RESIZE_HANDLE}
-        onMouseDown={onDragMouseDown}
-        aria-hidden="true"
-      />
       <div className={HEADER}>
         <span className={TITLE}>Terminal</span>
         <span className="flex-1" />
