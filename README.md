@@ -1,3 +1,4 @@
+FF<img width="1799" height="1128" alt="Screenshot 2026-05-17 at 16 46 27" src="https://github.com/user-attachments/assets/fc8d4518-3288-4719-982b-5c33df3ef4c5" />
 # AI Code Review Desk
 
 <!-- test commit to simulate "behind base" — safe to revert -->
