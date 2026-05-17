@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Terminal } from "@xterm/xterm";
+import { Terminal, type ILink, type ILinkProvider } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import "@xterm/xterm/css/xterm.css";
 
 import { useRepoStore } from "@/features/repository/repository.store";
@@ -180,6 +181,9 @@ function TerminalDrawerInner({
       lineHeight: 1.2,
       cursorBlink: true,
       allowProposedApi: true,
+      linkHandler: {
+        activate: (event, text) => openTerminalUrl(text, event),
+      },
       // Theme keys map to our CSS variables; xterm doesn't accept var() so
       // we resolve them via getComputedStyle once at construction time.
       theme: resolveXtermTheme(),
@@ -188,6 +192,7 @@ function TerminalDrawerInner({
     const fit = new FitAddon();
     term.loadAddon(fit);
     term.open(host);
+    const linkProvider = term.registerLinkProvider(createUrlLinkProvider(term));
     xtermRef.current = term;
     fitRef.current = fit;
 
@@ -269,6 +274,7 @@ function TerminalDrawerInner({
       sessionIdRef.current = null;
       setSessionReady(false);
       if (sid) termClose(sid).catch(() => {});
+      linkProvider.dispose();
       term.dispose();
       xtermRef.current = null;
       fitRef.current = null;
@@ -416,6 +422,66 @@ function resolveMonoStack(): string {
     v ||
     '"JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace'
   );
+}
+
+const URL_RE = /\bhttps?:\/\/[^\s<>"'`{}|\\^[\]]+/gi;
+const TRAILING_URL_PUNCT = /[),.;:!?]+$/;
+
+function createUrlLinkProvider(term: Terminal): ILinkProvider {
+  return {
+    provideLinks(
+      bufferLineNumber: number,
+      callback: (links: ILink[] | undefined) => void,
+    ) {
+      const line = term.buffer.active.getLine(bufferLineNumber - 1);
+      if (!line) {
+        callback(undefined);
+        return;
+      }
+      const text = line.translateToString(true);
+      const links: ILink[] = [...text.matchAll(URL_RE)].map((match) => {
+        const raw = match[0];
+        const url = raw.replace(TRAILING_URL_PUNCT, "");
+        const start = match.index ?? 0;
+        const end = start + url.length;
+        return {
+          range: {
+            start: { x: start + 1, y: bufferLineNumber },
+            end: { x: end + 1, y: bufferLineNumber },
+          },
+          text: url,
+          decorations: {
+            underline: true,
+            pointerCursor: true,
+          },
+          activate: (event: MouseEvent, linkText: string) => {
+            openTerminalUrl(linkText, event);
+          },
+        };
+      });
+      callback(links.length > 0 ? links : undefined);
+    },
+  };
+}
+
+function openTerminalUrl(text: string, event: MouseEvent): void {
+  if (!event.metaKey && !event.ctrlKey) return;
+  const url = normalizeTerminalUrl(text);
+  if (!url) return;
+  openUrl(url).catch(() => {
+    /* best-effort; terminal link activation should not interrupt input */
+  });
+}
+
+function normalizeTerminalUrl(text: string): string | null {
+  const trimmed = text.trim().replace(TRAILING_URL_PUNCT, "");
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
 }
 
 function base64ToUint8Array(b64: string): Uint8Array {
