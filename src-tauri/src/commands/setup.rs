@@ -121,7 +121,7 @@ async fn run_script(
                 &data_event,
                 DataPayload {
                     run_id: run_id.clone(),
-                    line: format!("[squint] failed to spawn bash: {e}"),
+                    line: format!("[dispatch] failed to spawn bash: {e}"),
                     stream: "stderr",
                 },
             );

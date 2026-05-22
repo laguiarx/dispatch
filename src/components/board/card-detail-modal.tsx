@@ -93,14 +93,14 @@ export function CardDetailModal({ onOpenReview, onApprove }: Props) {
   // benefit from seeing the Run config + Runs history at a glance.
   const [islandOpen, setIslandOpenState] = useState<boolean>(() => {
     if (typeof window === "undefined") return true;
-    const stored = window.localStorage.getItem("squint:detail-island-open");
+    const stored = window.localStorage.getItem("dispatch:detail-island-open");
     return stored === null ? true : stored === "1";
   });
   const setIslandOpen = (open: boolean) => {
     setIslandOpenState(open);
     if (typeof window !== "undefined") {
       window.localStorage.setItem(
-        "squint:detail-island-open",
+        "dispatch:detail-island-open",
         open ? "1" : "0",
       );
     }

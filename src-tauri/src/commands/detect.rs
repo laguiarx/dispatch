@@ -525,7 +525,7 @@ fn collect_env_files(
                     | ".venv"
                     | "venv"
                     | "__pycache__"
-                    | ".squint"
+                    | ".dispatch"
             ) {
                 continue;
             }

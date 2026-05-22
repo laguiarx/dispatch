@@ -52,7 +52,7 @@ export function NoRepoState({ onOpen }: Props) {
           Open a Git repository to start reviewing
         </div>
         <div className="max-w-[380px] font-mono text-fg-2 text-[12px] leading-[1.5]">
-          Point Squint at a local folder. We&apos;ll detect the current
+          Point Dispatch at a local folder. We&apos;ll detect the current
           branch and surface every changed file.
         </div>
         <div className="flex justify-center gap-2 pt-1">

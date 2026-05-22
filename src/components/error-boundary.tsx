@@ -25,7 +25,7 @@ export class ErrorBoundary extends Component<Props, State> {
     this.setState({ error, info });
     // Echo to the console too so DevTools / Tauri logs catch it.
     // eslint-disable-next-line no-console
-    console.error("[Squint] Unhandled render error:", error, info);
+    console.error("[Dispatch] Unhandled render error:", error, info);
   }
 
   reset = () => this.setState({ error: null, info: null });
@@ -43,7 +43,7 @@ export class ErrorBoundary extends Component<Props, State> {
     return (
       <div className="h-screen flex flex-col bg-bg-0 text-fg-0 p-6 gap-3 overflow-auto">
         <div className="text-[14px] font-semibold text-git-del">
-          Squint hit a render error
+          Dispatch hit a render error
         </div>
         <div className="text-[12px] text-fg-2 leading-[1.5] max-w-[680px]">
           The UI threw an exception during rendering. Below is the stack

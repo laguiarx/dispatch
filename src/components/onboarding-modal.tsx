@@ -270,7 +270,7 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
   return (
     <>
       <div className={BODY}>
-        <h2 className={TITLE}>Welcome to Squint</h2>
+        <h2 className={TITLE}>Welcome to Dispatch</h2>
         <p className={LEDE}>
           A focused desktop tool for reviewing code that AI agents (Claude
           Code, Codex, Cursor) just wrote. Not a full IDE — it stays out of

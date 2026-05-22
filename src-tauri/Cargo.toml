@@ -1,12 +1,12 @@
 [package]
-name = "squint"
+name = "dispatch"
 version = "0.2.3"
-description = "Squint — a focused macOS app for reviewing AI-generated Git changes."
+description = "Dispatch — a focused macOS app for reviewing AI-generated Git changes."
 authors = ["Lucas Aguiar"]
 edition = "2021"
 
 [lib]
-name = "squint_lib"
+name = "dispatch_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

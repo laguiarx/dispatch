@@ -59,9 +59,9 @@ function slugify(s: string): string {
 }
 
 function defaultBranchName(card: Card): string {
-  // `agent/` namespace (not `squint/`) so the prefix can't be confused
+  // `agent/` namespace (not `dispatch/`) so the prefix can't be confused
   // with a project name — users naming a project after the app would
-  // otherwise see e.g. `squint/...` on an atlas card and assume it
+  // otherwise see e.g. `dispatch/...` on an atlas card and assume it
   // landed in the wrong repo. The human-friendly `T42-slug` tail
   // mirrors what we show on the card tile and in the PR body.
   const tag = card.taskNumber ? `T${card.taskNumber}` : shortId(card.id);
@@ -70,9 +70,9 @@ function defaultBranchName(card: Card): string {
 
 function defaultWorktreePath(card: Card): string {
   // Relative to the repo so git stores a stable, portable path. The actual
-  // `.squint/worktrees/<short>` dir lives inside the user's project repo
-  // and gets auto-excluded by `ensure_squint_excluded` on first add.
-  return `.squint/worktrees/${shortId(card.id)}`;
+  // `.dispatch/worktrees/<short>` dir lives inside the user's project repo
+  // and gets auto-excluded by `ensure_dispatch_excluded` on first add.
+  return `.dispatch/worktrees/${shortId(card.id)}`;
 }
 
 type State = {
@@ -406,9 +406,9 @@ function bufferLog(
 }
 
 /** Snapshot key for the activeProjectId so it survives a reload. */
-const ACTIVE_PROJECT_KEY = "squint.board.activeProjectId";
-const SELECTED_CARD_KEY = "squint.board.selectedCardId";
-const NEW_CARD_OPEN_KEY = "squint.board.newCardOpen";
+const ACTIVE_PROJECT_KEY = "dispatch.board.activeProjectId";
+const SELECTED_CARD_KEY = "dispatch.board.selectedCardId";
+const NEW_CARD_OPEN_KEY = "dispatch.board.newCardOpen";
 
 function readActiveProjectId(): string | null {
   try {
@@ -965,7 +965,7 @@ export const useBoardStore = create<State>((set, get) => ({
         const repoState = useRepoStore.getState();
         const matching = repoState.terminalTabs.filter((tab) => {
           if (!tab.cwd) return false;
-          // Match the worktree root AND any nested cwd (a `cd .squint/`
+          // Match the worktree root AND any nested cwd (a `cd .dispatch/`
           // launched from within still belongs to this card). We don't
           // want to include sibling worktrees, so require the cwd to be
           // exactly the path or path + "/".
@@ -1015,7 +1015,7 @@ export const useBoardStore = create<State>((set, get) => ({
       const status = await api.gitStatusPorcelain(worktreeAbs);
       const trackedDirty = status.some((s) => s.status !== "untracked");
       if (trackedDirty) {
-        await api.gitCommitAll(worktreeAbs, `squint: ${card.title}`);
+        await api.gitCommitAll(worktreeAbs, `dispatch: ${card.title}`);
       }
 
       await api.gitPush(worktreeAbs, true);
@@ -1025,7 +1025,7 @@ export const useBoardStore = create<State>((set, get) => ({
         : `card ${card.id.slice(0, 8)}`;
       const body =
         (card.description || "").trim() +
-        `\n\n---\nOpened by Squint from ${taskRef}.`;
+        `\n\n---\nOpened by Dispatch from ${taskRef}.`;
       const prUrl = await api.ghPrCreate(
         worktreeAbs,
         card.title,
@@ -1417,9 +1417,9 @@ async function spawnAgentForCard(
     if (names.length > 0) {
       attachmentSection =
         "\n\n# Reference attachments\n" +
-        "The following files are available under `.squint/attachments/` in the worktree. " +
+        "The following files are available under `.dispatch/attachments/` in the worktree. " +
         "Open them with your file-reading tool when you need to consult them:\n" +
-        names.map((n) => `- \`.squint/attachments/${n}\``).join("\n");
+        names.map((n) => `- \`.dispatch/attachments/${n}\``).join("\n");
     }
   } catch {
     /* attachment staging is non-fatal — the agent still gets the task */

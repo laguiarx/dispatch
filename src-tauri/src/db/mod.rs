@@ -48,7 +48,7 @@ pub fn init(app: &AppHandle) -> AppResult<()> {
         .path()
         .app_data_dir()
         .map_err(|e| AppError::Db(format!("resolve app_data_dir: {e}")))?;
-    let db_path = dir.join("squint.db");
+    let db_path = dir.join("dispatch.db");
     let conn = open(&db_path)?;
     app.manage(Db(Arc::new(Mutex::new(conn))));
     Ok(())

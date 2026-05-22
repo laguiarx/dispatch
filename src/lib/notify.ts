@@ -7,7 +7,7 @@
  * `src-tauri/src/lib.rs` and granted via `capabilities/default.json`.
  *
  * Permission is requested lazily on the first send — on macOS this is the
- * one-time system dialog ("Squint would like to send you notifications").
+ * one-time system dialog ("Dispatch would like to send you notifications").
  * Once granted, subsequent sends are silent.
  *
  * The helper intentionally swallows every failure: a missing plugin, a
@@ -209,7 +209,7 @@ export async function sendTestNotification(
   }
   try {
     sendNotification({
-      title: "Squint",
+      title: "Dispatch",
       body: "Notifications are working. You'll get one when an agent finishes a task.",
       sound: settings.notifications.sound ? "default" : undefined,
     });

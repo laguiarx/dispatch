@@ -267,7 +267,7 @@ pub async fn agent_start(
                 let payload = LogPayload {
                     run_id: run_id_for_task.clone(),
                     stream: "stderr",
-                    line: format!("squint: agent task failed: {e}"),
+                    line: format!("dispatch: agent task failed: {e}"),
                     ts: now_ms(),
                 };
                 let _ = app_for_task

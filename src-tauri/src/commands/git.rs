@@ -1688,14 +1688,14 @@ pub struct WorktreeEntry {
     pub detached: bool,
 }
 
-/// Append `.squint/` to `.git/info/exclude` so the worktree dir we create
+/// Append `.dispatch/` to `.git/info/exclude` so the worktree dir we create
 /// inside the repo doesn't litter `git status`. Idempotent — we only write
 /// the line if it isn't already present (so the user is free to delete
 /// or move it).
-fn ensure_squint_excluded(repo: &Path) -> AppResult<()> {
+fn ensure_dispatch_excluded(repo: &Path) -> AppResult<()> {
     let exclude = repo.join(".git").join("info").join("exclude");
     let existing = std::fs::read_to_string(&exclude).unwrap_or_default();
-    let needle = ".squint/";
+    let needle = ".dispatch/";
     if existing.lines().any(|l| l.trim() == needle) {
         return Ok(());
     }
@@ -1731,7 +1731,7 @@ pub fn git_worktree_add(
     reject_flaggish("base", &base)?;
     reject_flaggish("worktree path", &worktree_path)?;
 
-    ensure_squint_excluded(&repo)?;
+    ensure_dispatch_excluded(&repo)?;
 
     if let Some(parent) = Path::new(&worktree_path).parent() {
         if !parent.as_os_str().is_empty() {
@@ -1969,12 +1969,12 @@ mod tests {
             name: "main".into(),
             upstream: "origin/main".into(),
             track: "[behind 1]".into(),
-            worktree_path: "/tmp/squint-main".into(),
+            worktree_path: "/tmp/dispatch-main".into(),
         };
 
         assert_eq!(
             classify_branch_sync(&branch, "/repo"),
-            BranchSyncDecision::Skip("checked out at /tmp/squint-main".into())
+            BranchSyncDecision::Skip("checked out at /tmp/dispatch-main".into())
         );
     }
 
@@ -1987,7 +1987,7 @@ mod tests {
 
         assert!(!is_editable_ignored_file("node_modules/pkg/index.js"));
         assert!(!is_editable_ignored_file("dist/index.html"));
-        assert!(!is_editable_ignored_file("src-tauri/target/debug/squint"));
+        assert!(!is_editable_ignored_file("src-tauri/target/debug/dispatch"));
         assert!(!is_editable_ignored_file(".DS_Store"));
     }
 }

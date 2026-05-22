@@ -674,13 +674,13 @@ function NotificationsSection() {
         <div className={SECTION_SUB}>
           Desktop pings via your OS notification center. macOS will ask for
           permission the first time one fires. To revoke, open System Settings
-          → Notifications → Squint.
+          → Notifications → Dispatch.
         </div>
         {/* Heads-up about dev-mode attribution — when running via
             `tauri dev`, macOS attributes the prompt to the parent
             terminal (e.g. "Terminal Notifications"), which throws people
-            off. In the signed build it shows up as "Squint" because the
-            bundle identifier (com.lucasaguiar.squint) is registered. We
+            off. In the signed build it shows up as "Dispatch" because the
+            bundle identifier (com.lucasaguiar.dispatch) is registered. We
             only mention it inline so it's not a popup the user has to
             dismiss every session. */}
         <div
@@ -690,8 +690,8 @@ function NotificationsSection() {
           )}
         >
           Running in dev mode? macOS attributes the permission prompt to your
-          terminal app instead of Squint — that&apos;s expected. Notifications
-          show up under the real Squint identity in the released build.
+          terminal app instead of Dispatch — that&apos;s expected. Notifications
+          show up under the real Dispatch identity in the released build.
         </div>
       </div>
 
@@ -765,7 +765,7 @@ function NotificationsSection() {
                 break;
               case "permission-denied":
                 pushToast(
-                  "macOS denied permission. Open System Settings → Notifications → Squint to allow.",
+                  "macOS denied permission. Open System Settings → Notifications → Dispatch to allow.",
                   "danger",
                 );
                 break;

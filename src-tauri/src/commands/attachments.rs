@@ -179,7 +179,7 @@ fn list_paths_for_card(
     })
 }
 
-/// Copy every attachment of `card_id` into `<worktree>/.squint/attachments/`
+/// Copy every attachment of `card_id` into `<worktree>/.dispatch/attachments/`
 /// so the agent can read them via its normal file-reading tools. Returns
 /// the list of filenames copied (relative names — the agent only needs to
 /// know what to reference, the directory is documented in the prompt).
@@ -199,7 +199,7 @@ pub fn attachment_stage_for_run(
         return Ok(Vec::new());
     }
     let dest_dir = PathBuf::from(&worktree_path)
-        .join(".squint")
+        .join(".dispatch")
         .join("attachments");
     // Clear existing staged files so deleted attachments don't linger.
     if dest_dir.exists() {

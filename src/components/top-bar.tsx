@@ -194,7 +194,7 @@ export function TopBar() {
             />
           </>
         ) : (
-          <span className="text-[12px] text-fg-2 font-mono ml-2">Squint</span>
+          <span className="text-[12px] text-fg-2 font-mono ml-2">Dispatch</span>
         )}
       </div>
 

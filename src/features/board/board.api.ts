@@ -203,7 +203,7 @@ export async function attachmentReadBytes(id: string): Promise<Uint8Array> {
   return new Uint8Array(arr);
 }
 
-/** Copy every attachment of a card into `<worktree>/.squint/attachments/`
+/** Copy every attachment of a card into `<worktree>/.dispatch/attachments/`
  * and return the list of filenames. Called right before spawning an
  * agent so it can read the staged files from a known location. */
 export async function attachmentStageForRun(

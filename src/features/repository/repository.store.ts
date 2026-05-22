@@ -661,7 +661,7 @@ function basename(p: string): string {
 }
 
 /** Persisted height of the integrated terminal drawer (px). */
-const TERMINAL_HEIGHT_KEY = "squint:terminal-height";
+const TERMINAL_HEIGHT_KEY = "dispatch:terminal-height";
 function readTerminalHeight(): number {
   try {
     const raw = localStorage.getItem(TERMINAL_HEIGHT_KEY);
@@ -682,7 +682,7 @@ function writeTerminalHeight(px: number): void {
 }
 
 function reviewedStorageKey(repoPath: string): string {
-  return `squint:reviewed:${repoPath}`;
+  return `dispatch:reviewed:${repoPath}`;
 }
 
 function loadReviewed(repoPath: string): Set<string> {
@@ -836,7 +836,7 @@ async function runWithAutoStash<T>(
     return op();
   }
   const ts = new Date().toISOString().replace(/[:T]/g, "-").slice(0, 16);
-  const message = `squint auto-stash ${ts}`;
+  const message = `dispatch auto-stash ${ts}`;
   await gitApi.stashPush(repoPath, message, true);
   try {
     const result = await op();
@@ -1426,7 +1426,7 @@ export const useRepoStore = create<State>((set, get) => ({
           updateInfo: null,
           updateProgress: null,
         });
-        if (!silent) get().pushToast("Squint is up to date");
+        if (!silent) get().pushToast("Dispatch is up to date");
         return;
       }
       set({
@@ -3212,7 +3212,7 @@ export const useRepoStore = create<State>((set, get) => ({
     set({
       confirm: {
         title: `Revert hunk #${hunkIdx + 1}?`,
-        body: `This permanently discards the working-tree changes for this hunk in ${filePath}. It can't be undone from Squint.`,
+        body: `This permanently discards the working-tree changes for this hunk in ${filePath}. It can't be undone from Dispatch.`,
         confirmLabel: "Revert",
         danger: true,
         onConfirm: async () => {
@@ -3260,7 +3260,7 @@ export const useRepoStore = create<State>((set, get) => ({
     set({
       confirm: {
         title: `Discard ${count} file${count === 1 ? "" : "s"}?`,
-        body: `This permanently reverts the working-tree changes for ${count} file${count === 1 ? "" : "s"}. Untracked files will be deleted. It can't be undone from Squint.`,
+        body: `This permanently reverts the working-tree changes for ${count} file${count === 1 ? "" : "s"}. Untracked files will be deleted. It can't be undone from Dispatch.`,
         confirmLabel: "Discard all",
         danger: true,
         onConfirm: async () => {
@@ -3296,7 +3296,7 @@ export const useRepoStore = create<State>((set, get) => ({
     set({
       confirm: {
         title: `Discard changes to ${path}?`,
-        body: `This permanently removes ${file.additions + file.deletions} line changes in this file. It can't be undone from Squint.`,
+        body: `This permanently removes ${file.additions + file.deletions} line changes in this file. It can't be undone from Dispatch.`,
         confirmLabel: "Discard changes",
         danger: true,
         onConfirm: async () => {

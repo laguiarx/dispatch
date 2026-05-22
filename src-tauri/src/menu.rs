@@ -12,7 +12,7 @@ const ACTION_EVENT: &str = "menu-action";
 /// to in-app actions.
 pub fn build_app_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let about = AboutMetadataBuilder::new()
-        .name(Some("Squint"))
+        .name(Some("Dispatch"))
         .version(Some(env!("CARGO_PKG_VERSION")))
         .build();
 
@@ -25,8 +25,8 @@ pub fn build_app_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         MenuItemBuilder::with_id("app:check-updates", "Check for Updates…")
             .build(app)?;
 
-    let app_menu = SubmenuBuilder::new(app, "Squint")
-        .item(&PredefinedMenuItem::about(app, Some("About Squint"), Some(about))?)
+    let app_menu = SubmenuBuilder::new(app, "Dispatch")
+        .item(&PredefinedMenuItem::about(app, Some("About Dispatch"), Some(about))?)
         .separator()
         .item(&preferences)
         .item(&check_updates)

@@ -1,7 +1,7 @@
 import type { FontPreset, MonoPreset, Theme } from "./theme";
 
-const RECENT_REPOS_KEY = "squint:recent-repos";
-const SETTINGS_KEY = "squint:settings";
+const RECENT_REPOS_KEY = "dispatch:recent-repos";
+const SETTINGS_KEY = "dispatch:settings";
 
 const MAX_RECENT = 10;
 
