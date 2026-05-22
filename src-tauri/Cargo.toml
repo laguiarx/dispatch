@@ -1,6 +1,6 @@
 [package]
 name = "dispatch"
-version = "0.2.3"
+version = "0.2.4"
 description = "Dispatch — a focused macOS app for reviewing AI-generated Git changes."
 authors = ["Lucas Aguiar"]
 edition = "2021"

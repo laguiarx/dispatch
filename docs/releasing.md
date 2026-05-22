@@ -33,17 +33,18 @@ cannot verify future updates.
 
 ## Cut a release
 
-1. Update the app version in `package.json` and `src-tauri/tauri.conf.json`.
+1. Update the app version in `package.json`, `src-tauri/Cargo.toml`, and
+   `src-tauri/tauri.conf.json`.
 2. Commit the version bump.
 3. Create and push a tag:
 
 ```sh
-git tag v0.2.0
-git push origin v0.2.0
+git tag v0.2.4
+git push origin v0.2.4
 ```
 
-GitHub Actions will build macOS, Windows, and Linux bundles and create a draft
-release. The action also uploads updater assets and `latest.json`.
+GitHub Actions will build macOS Apple Silicon and Intel bundles and create a
+draft release. The action also uploads updater assets and `latest.json`.
 
 ## Publish
 
@@ -54,8 +55,6 @@ latest.json
 *.sig
 *.app.tar.gz
 *.dmg
-*.msi or *setup.exe
-*.AppImage and/or *.deb
 ```
 
 Once the draft is published, installed apps can discover the update from
@@ -67,7 +66,7 @@ The same workflow can be run from GitHub Actions with a `v*` tag input, for
 example:
 
 ```text
-v0.2.0
+v0.2.4
 ```
 
 Prefer tag pushes for normal releases because the git history then clearly shows

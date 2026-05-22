@@ -201,7 +201,7 @@ src-tauri/
 ## Release
 
 Release builds are created by GitHub Actions from `v*` tags. The workflow builds
-macOS, Windows, and Linux bundles and creates a draft GitHub Release with
+macOS Apple Silicon and Intel bundles and creates a draft GitHub Release with
 updater artifacts.
 
 The short version:
