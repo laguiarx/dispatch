@@ -1,7 +1,18 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { BTN_GHOST } from "@/lib/btn";
 import { useRepoStore } from "@/features/repository/repository.store";
-import { getFileDiff, readWorkingFile } from "@/features/git/git.api";
+import {
+  getFileDiff,
+  peekCachedFileDiff,
+  readWorkingFile,
+} from "@/features/git/git.api";
 import type { ChangedFile, DiffResult, Hunk } from "@/features/git/git.types";
 import {
   parseUnifiedDiff,
@@ -181,9 +192,19 @@ export function DiffPane() {
       return;
     }
     let cancelled = false;
-    setLoading(true);
     const path = file.path;
     const staged = file.staged;
+    // Synchronous cache peek so holding ⌥↓ doesn't flash the "Loading…"
+    // skeleton on every step when the next file is already warm from
+    // `selectAdjacentFile`'s prefetch window. The cache lives in the
+    // git.api module so it survives unmounts of this pane.
+    const cached = peekCachedFileDiff(repo.path, path, staged);
+    if (cached) {
+      setDiff(cached);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     getFileDiff(repo.path, path, staged)
       .then((d) => {
         if (!cancelled) setDiff(d);
@@ -248,29 +269,40 @@ export function DiffPane() {
     binaryPath,
   ]);
 
+  // useDeferredValue: when the user holds ⌥↓ at 30Hz, `diff` flips
+  // every ~33ms. Computing hunks/sections + rendering the SbsCell tree
+  // for a 2000-line file takes 100ms+, which would block the next file
+  // switch's React reconciliation. By deferring `diff` here, React is
+  // free to abandon an in-progress diff-body render the moment a new
+  // file is selected — only the latest one actually commits to the
+  // DOM. The selected row in the sidebar still updates on the urgent
+  // pass, so the focus indicator tracks the user's keys without lag.
+  const deferredDiff = useDeferredValue(diff);
   const hunks: Hunk[] = useMemo(() => {
-    if (!diff || !file) return [];
-    const parsed = parseUnifiedDiff(diff.diffText);
+    if (!deferredDiff || !file) return [];
+    const parsed = parseUnifiedDiff(deferredDiff.diffText);
     if (parsed.length > 0) return parsed;
     if (file.status === "added" || file.status === "untracked") {
-      if (diff.newContent) return [syntheticAddedHunk(diff.newContent)];
+      if (deferredDiff.newContent)
+        return [syntheticAddedHunk(deferredDiff.newContent)];
     }
     if (file.status === "deleted") {
-      if (diff.oldContent) return [syntheticDeletedHunk(diff.oldContent)];
+      if (deferredDiff.oldContent)
+        return [syntheticDeletedHunk(deferredDiff.oldContent)];
     }
     return [];
-  }, [diff, file]);
+  }, [deferredDiff, file]);
 
   const sections = useMemo(() => {
-    if (!file || !diff) return [];
+    if (!file || !deferredDiff) return [];
     return buildSections(
       hunks,
-      diff.oldContent,
-      diff.newContent,
+      deferredDiff.oldContent,
+      deferredDiff.newContent,
       diffExpansion,
       file.status,
     );
-  }, [hunks, diff, diffExpansion, file]);
+  }, [hunks, deferredDiff, diffExpansion, file]);
 
   // Reset state when switching files / modes. Guarded so we don't emit
   // useless renders (`setCollapsedHunks(new Set())` on a path that already

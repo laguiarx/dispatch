@@ -15,6 +15,14 @@ pub enum AppError {
     Utf8(#[from] std::string::FromUtf8Error),
     #[error("Regex error: {0}")]
     Regex(#[from] regex::Error),
+    #[error("Database error: {0}")]
+    Db(String),
+}
+
+impl From<rusqlite::Error> for AppError {
+    fn from(e: rusqlite::Error) -> Self {
+        AppError::Db(e.to_string())
+    }
 }
 
 impl Serialize for AppError {

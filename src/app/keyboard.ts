@@ -1,12 +1,12 @@
 import { useEffect, useRef } from "react";
 import { useRepoStore } from "@/features/repository/repository.store";
+import { useBoardStore } from "@/features/board/board.store";
 
 export function useKeyboardShortcuts() {
   const repository = useRepoStore((s) => s.repository);
   const selectedFilePath = useRepoStore((s) => s.selectedFilePath);
   const files = useRepoStore((s) => s.files);
 
-  const openRepositoryPicker = useRepoStore((s) => s.openRepositoryPicker);
   const refresh = useRepoStore((s) => s.refresh);
   const setSidebarTab = useRepoStore((s) => s.setSidebarTab);
   const pingSearchFocus = useRepoStore((s) => s.pingSearchFocus);
@@ -62,9 +62,16 @@ export function useKeyboardShortcuts() {
       // physical key ("KeyB"). Modifiers like Shift / Cmd still work fine.
       const code = e.code;
 
+      // ⌘O → Add project (folder picker). Repurposed from the legacy
+      // "Open Repository…" shortcut: in agent-first mode this drops the
+      // selected folder onto the board as a new project rather than
+      // opening it for diff viewing.
       if (mod && !e.shiftKey && !e.altKey && code === "KeyO") {
+        if (inField) return;
+        const reviewing = useRepoStore.getState().reviewedCardId !== null;
+        if (reviewing) return;
         e.preventDefault();
-        await openRepositoryPicker();
+        void useBoardStore.getState().addProjectFromPicker();
         return;
       }
       // ⌘P → file picker
@@ -76,14 +83,32 @@ export function useKeyboardShortcuts() {
       // ⌘⇧P → command palette
       if (mod && !e.altKey && code === "KeyP" && e.shiftKey) {
         e.preventDefault();
-        if (repository) setPaletteMode("commands");
+        setPaletteMode("commands");
         return;
       }
-      // ⌘K → chord prefix. Arms a short window during which the next key
-      // completes the binding (e.g. ⌘K ⌘W / ⌘K W → close all tabs). It is
-      // NOT an alias for the command palette anymore.
+      // ⌘N → open the "New card" dialog in board mode. Skip when the user
+      // is typing into a field (they probably want a literal "n") and skip
+      // in Review mode (we have no card to add there).
+      if (mod && !e.shiftKey && !e.altKey && code === "KeyN") {
+        const reviewing = useRepoStore.getState().reviewedCardId !== null;
+        if (inField || reviewing) return;
+        const hasProjects = useBoardStore.getState().projects.length > 0;
+        if (!hasProjects) return;
+        e.preventDefault();
+        useBoardStore.getState().setNewCardOpen(true);
+        return;
+      }
+      // ⌘K → in board mode, alias for ⌘⇧P (open command palette). In
+      // Review mode it stays as the chord prefix (e.g. ⌘K W → close all
+      // tabs) since the diff workflow relies on those chords.
       if (mod && !e.shiftKey && !e.altKey && code === "KeyK") {
         if (inField) return;
+        const reviewing = useRepoStore.getState().reviewedCardId !== null;
+        if (!reviewing) {
+          e.preventDefault();
+          setPaletteMode("commands");
+          return;
+        }
         e.preventDefault();
         chordPrefixRef.current = true;
         if (chordTimerRef.current != null) {
@@ -291,7 +316,6 @@ export function useKeyboardShortcuts() {
     repository,
     selectedFilePath,
     files,
-    openRepositoryPicker,
     refresh,
     setSidebarTab,
     pingSearchFocus,

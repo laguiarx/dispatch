@@ -1,9 +1,14 @@
+pub mod agent;
 pub mod ai;
+pub mod attachments;
+pub mod board;
+pub mod detect;
 pub mod gh;
 pub mod git;
 pub mod repository;
 pub mod replace;
 pub mod search;
+pub mod setup;
 pub mod terminal;
 
 use std::path::{Path, PathBuf};

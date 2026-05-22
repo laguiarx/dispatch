@@ -38,7 +38,14 @@ export type IconName =
   | "inlineView"
   | "fileFull"
   | "fileHunks"
-  | "download";
+  | "download"
+  | "paperclip"
+  | "send"
+  | "play"
+  | "bug"
+  | "terminal"
+  | "database"
+  | "bell";
 
 export const I: Record<IconName, ReactElement> = {
   refresh: (
@@ -62,6 +69,96 @@ export const I: Record<IconName, ReactElement> = {
         strokeWidth="1.25"
         strokeLinecap="round"
         strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  paperclip: (
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+      <path
+        d="M10.5 5 5.6 9.9a2 2 0 1 0 2.8 2.8l5.6-5.6a3.5 3.5 0 0 0-5-5L3.4 7.7a5 5 0 0 0 7 7l4.6-4.6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  send: (
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+      <path
+        d="M8 13V3M4 7l4-4 4 4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  play: (
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+      <path
+        d="M5 3.5v9l7-4.5-7-4.5z"
+        fill="currentColor"
+        stroke="currentColor"
+        strokeWidth="1"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  bug: (
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+      <path
+        d="M5.5 6h5v3a2.5 2.5 0 0 1-2.5 2.5h0A2.5 2.5 0 0 1 5.5 9V6Zm0 0a2.5 2.5 0 0 1 5 0M3 7h2m6 0h2M3.5 4.5l1.5 1m6 0 1.5-1M3.5 11l1.5-1m6 0 1.5 1M8 11.5v1.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  terminal: (
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+      <path
+        d="M2 3.5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-9Zm2.5 3 2 1.5-2 1.5M8 11h3.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  bell: (
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+      <path
+        d="M8 1.5c-2.21 0-4 1.79-4 4v2.7c0 .55-.22 1.08-.61 1.47L2.5 10.5h11l-.89-.83a2.08 2.08 0 0 1-.61-1.47V5.5c0-2.21-1.79-4-4-4ZM6.5 12.5a1.5 1.5 0 0 0 3 0"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  database: (
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+      <ellipse
+        cx="8"
+        cy="3.5"
+        rx="5.5"
+        ry="1.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.2"
+      />
+      <path
+        d="M2.5 3.5v9c0 .83 2.46 1.5 5.5 1.5s5.5-.67 5.5-1.5v-9M2.5 7.5c0 .83 2.46 1.5 5.5 1.5s5.5-.67 5.5-1.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.2"
       />
     </svg>
   ),

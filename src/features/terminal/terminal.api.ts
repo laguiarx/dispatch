@@ -13,8 +13,9 @@ export async function termOpen(
   cols: number,
   rows: number,
   cwd: string | null,
+  command: string | null = null,
 ): Promise<TermOpenResult> {
-  return invoke<TermOpenResult>("term_open", { cols, rows, cwd });
+  return invoke<TermOpenResult>("term_open", { cols, rows, cwd, command });
 }
 
 export async function termWrite(id: string, data: string): Promise<void> {

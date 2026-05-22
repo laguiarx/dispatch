@@ -94,12 +94,55 @@ export function SidebarResizeHandle() {
  */
 export function TerminalResizeHandle() {
   const visible = useRepoStore(
-    (s) => s.terminalOpen && s.terminalSessionAlive,
+    (s) => s.terminalOpen && s.terminalTabs.length > 0,
   );
+  const position = useRepoStore((s) => s.settings.terminalPosition);
   const height = useRepoStore((s) => s.terminalHeight);
+  const width = useRepoStore((s) => s.settings.terminalRightWidth);
   const setHeight = useRepoStore((s) => s.setTerminalHeight);
+  const setWidth = useRepoStore((s) => s.setTerminalRightWidth);
 
   if (!visible) return null;
+
+  // Bottom-dock path (the original behaviour): vertical drag tweaks
+  // height. Right-dock path: horizontal drag tweaks width — and the
+  // delta is inverted because dragging the handle leftward grows the
+  // panel (the terminal sits on the right edge).
+  if (position === "right") {
+    function onMouseDownH(e: React.MouseEvent) {
+      e.preventDefault();
+      const startX = e.clientX;
+      const startW = width;
+
+      function release() {
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+      }
+      function onMove(ev: MouseEvent) {
+        const dx = startX - ev.clientX;
+        setWidth(startW + dx);
+      }
+      function onUp() {
+        release();
+      }
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+    }
+
+    return (
+      <div
+        className={cn(HANDLE_BASE, "top-0 bottom-0 cursor-col-resize")}
+        style={{ right: `${width}px`, width: `${GAP_PX}px` }}
+        onMouseDown={onMouseDownH}
+        role="separator"
+        aria-orientation="vertical"
+      />
+    );
+  }
 
   function onMouseDown(e: React.MouseEvent) {
     e.preventDefault();

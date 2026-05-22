@@ -50,12 +50,6 @@ pub fn open_repository(path: String) -> AppResult<Repository> {
     })
 }
 
-#[tauri::command]
-pub fn git_current_branch(repo_path: String) -> AppResult<String> {
-    let repo = resolve_repo(&repo_path)?;
-    current_branch_impl(&repo)
-}
-
 fn current_branch_impl(repo: &Path) -> AppResult<String> {
     // `symbolic-ref --short HEAD` reads `.git/HEAD` directly and works even
     // on freshly-initialised repos without any commits — unlike `rev-parse

@@ -41,10 +41,18 @@ pub fn build_app_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         .build()?;
 
     // File menu
-    let open_existing =
-        MenuItemBuilder::with_id("file:open-repo", "Open Repository…")
+    //
+    // ⌘O is repurposed from the legacy "Open Repository…" (which opened
+    // a folder for diff viewing) to "Add Project…", which drops the
+    // selected folder onto the board as a new project. The diff
+    // workflow only re-enters via Review mode on a card.
+    let add_project =
+        MenuItemBuilder::with_id("file:add-project", "Add Project…")
             .accelerator("CmdOrCtrl+O")
             .build(app)?;
+    let new_card = MenuItemBuilder::with_id("file:new-card", "New Card…")
+        .accelerator("CmdOrCtrl+N")
+        .build(app)?;
     let go_to_file =
         MenuItemBuilder::with_id("file:go-to-file", "Go to File…")
             .accelerator("CmdOrCtrl+P")
@@ -65,7 +73,9 @@ pub fn build_app_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
             .build(app)?;
 
     let file_menu = SubmenuBuilder::new(app, "File")
-        .item(&open_existing)
+        .item(&add_project)
+        .item(&new_card)
+        .separator()
         .item(&go_to_file)
         .separator()
         .item(&refresh)

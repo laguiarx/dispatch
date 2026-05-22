@@ -159,67 +159,120 @@ fn apply_numstat(files: &mut [ChangedFile], numstat: &str, staged: bool) {
     }
 }
 
+fn looks_binary(bytes: &[u8]) -> bool {
+    let sample = &bytes[..bytes.len().min(8192)];
+    sample.contains(&0u8)
+}
+
+/// Compute the diff payload the DiffPane renders for a single file.
+///
+/// Async + `spawn_blocking` because this command does 3–4 sequential
+/// `git` subprocess spawns (~5-30ms each on macOS); running them on the
+/// Tauri runtime thread queued every diff fetch behind the previous one
+/// during rapid file navigation. Moving to the blocking pool keeps IPC
+/// responsive for the sidebar / status / terminal calls that fire
+/// concurrently.
+///
+/// The function was accidentally dropped while pivoting the app to the
+/// kanban board (the diff feature stuck around but the command lost its
+/// Rust handler) and the frontend started failing with "Command
+/// git_file_diff not found" on every file switch. Re-added with the
+/// original behavior — the JS api wrapper in `git.api.ts` and the
+/// `DIFF_CACHE` it owns are unchanged.
 #[tauri::command]
 pub async fn git_file_diff(
     repo_path: String,
     file_path: String,
     staged: bool,
 ) -> AppResult<DiffResult> {
-    // Async + spawn_blocking: this command does 3–4 sequential `git`
-    // subprocess spawns (~5-30ms each on macOS). Before this it was a
-    // plain `pub fn`, so every ⌥↓ navigation queued behind the previous
-    // diff fetch on the same Tauri runtime thread — even sidebar list
-    // refreshes felt jittery. Now it runs on the blocking pool and the
-    // IPC channel stays free for everything else.
     let repo = resolve_repo(&repo_path)?;
-    tokio::task::spawn_blocking(move || {
-        // Determine status to know whether the file is untracked.
-        let porcelain = run_git_string(
-            &repo,
-            &["status", "--porcelain=v1", "--", &file_path],
-        )?;
-        let untracked = porcelain.starts_with("??");
-
-        let is_binary = file_is_binary(&repo, &file_path, staged, untracked)?;
-
-        let diff_args: Vec<&str> = if untracked {
-            vec!["diff", "--no-index", "--", "/dev/null", &file_path]
-        } else if staged {
-            vec!["diff", "--cached", "--", &file_path]
-        } else {
-            vec!["diff", "--", &file_path]
-        };
-        // git diff --no-index returns a non-zero exit on differences,
-        // which would be misread as a failure. Handle untracked
-        // separately via raw command.
-        let diff_text = if untracked {
-            run_git_allow_nonzero(&repo, &diff_args)?
-        } else {
-            run_git_string(&repo, &diff_args).unwrap_or_default()
-        };
-
-        let (old_content, new_content) = if is_binary {
-            (String::new(), String::new())
-        } else {
-            let new_content =
-                read_new_content(&repo, &file_path, staged, untracked)?;
-            let old_content =
-                read_old_content(&repo, &file_path, staged, untracked)?;
-            (old_content, new_content)
-        };
-
-        Ok(DiffResult {
-            file_path,
-            old_content,
-            new_content,
-            diff_text,
-            is_binary,
-        })
+    // First call is sequential because the next 3 fan-outs depend on
+    // `untracked`. Status itself is one small `git status --porcelain=v1
+    // -- <path>`, ~5-10ms on macOS.
+    let repo_for_status = repo.clone();
+    let path_for_status = file_path.clone();
+    let porcelain = tokio::task::spawn_blocking(move || {
+        run_git_string(
+            &repo_for_status,
+            &["status", "--porcelain=v1", "--", &path_for_status],
+        )
     })
     .await
-    .map_err(|e| AppError::msg(format!("diff task panicked: {e}")))?
+    .map_err(|e| AppError::msg(format!("status task panicked: {e}")))??;
+    let untracked = porcelain.starts_with("??");
+
+    // Fan out the 3 remaining git calls in parallel on the blocking
+    // pool. Before this they were serialised inside one spawn_blocking,
+    // so the total latency was diff + read_new + read_old + is_binary
+    // (~50-150ms for a medium file on cold cache). Now they overlap at
+    // the cost of 3 simultaneous git subprocesses — cheap on modern
+    // machines and pays off on every ⌥↓ navigation.
+    let diff_handle = {
+        let repo = repo.clone();
+        let file_path = file_path.clone();
+        tokio::task::spawn_blocking(move || -> AppResult<String> {
+            let diff_args: Vec<&str> = if untracked {
+                vec!["diff", "--no-index", "--", "/dev/null", &file_path]
+            } else if staged {
+                vec!["diff", "--cached", "--", &file_path]
+            } else {
+                vec!["diff", "--", &file_path]
+            };
+            if untracked {
+                // --no-index returns exit code 1 on differences, which
+                // would be misread as a failure — use the lenient runner.
+                run_git_allow_nonzero(&repo, &diff_args)
+            } else {
+                Ok(run_git_string(&repo, &diff_args).unwrap_or_default())
+            }
+        })
+    };
+    let binary_handle = {
+        let repo = repo.clone();
+        let file_path = file_path.clone();
+        tokio::task::spawn_blocking(move || file_is_binary(&repo, &file_path, staged, untracked))
+    };
+    let contents_handle = {
+        let repo = repo.clone();
+        let file_path = file_path.clone();
+        tokio::task::spawn_blocking(move || -> AppResult<(String, String)> {
+            let new_content = read_new_content(&repo, &file_path, staged, untracked)?;
+            let old_content = read_old_content(&repo, &file_path, staged, untracked)?;
+            Ok((old_content, new_content))
+        })
+    };
+
+    let diff_text = diff_handle
+        .await
+        .map_err(|e| AppError::msg(format!("diff task panicked: {e}")))??;
+    let is_binary = binary_handle
+        .await
+        .map_err(|e| AppError::msg(format!("binary-check task panicked: {e}")))??;
+    let (old_content, new_content) = if is_binary {
+        // We still spawned the contents task above (we couldn't know
+        // is_binary yet) — drop its result. The wasted git show is
+        // bounded by file size and runs on the blocking pool, so it
+        // doesn't block IPC; not worth the branch to skip it.
+        drop(contents_handle);
+        (String::new(), String::new())
+    } else {
+        contents_handle
+            .await
+            .map_err(|e| AppError::msg(format!("contents task panicked: {e}")))??
+    };
+
+    Ok(DiffResult {
+        file_path,
+        old_content,
+        new_content,
+        diff_text,
+        is_binary,
+    })
 }
 
+/// Run `git` and accept exit code 1 in addition to 0. Used for
+/// `git diff --no-index`, which returns 1 whenever the two inputs
+/// differ — not an error in that context.
 fn run_git_allow_nonzero(repo: &Path, args: &[&str]) -> AppResult<String> {
     let output = Command::new("git")
         .arg("-C")
@@ -227,7 +280,6 @@ fn run_git_allow_nonzero(repo: &Path, args: &[&str]) -> AppResult<String> {
         .args(args)
         .output()
         .map_err(|e| AppError::Git(format!("failed to spawn git: {e}")))?;
-    // Accept exit codes 0 and 1 (1 means diffs exist for `--no-index`).
     let code = output.status.code().unwrap_or(-1);
     if code != 0 && code != 1 {
         let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
@@ -240,13 +292,17 @@ fn run_git_allow_nonzero(repo: &Path, args: &[&str]) -> AppResult<String> {
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
+/// Heuristic: is `file_path` a binary file relative to `repo`? Reads
+/// from the working tree when the file is untracked or unstaged, and
+/// from the index for staged comparisons. Returns false on any IO error
+/// — false-negatives just mean we'll try to render the file as text,
+/// which the frontend tolerates.
 fn file_is_binary(
     repo: &Path,
     file_path: &str,
     staged: bool,
     untracked: bool,
 ) -> AppResult<bool> {
-    // For untracked or unstaged: read from working tree.
     let path = repo.join(file_path);
     if untracked || !staged {
         if path.exists() && path.is_file() {
@@ -255,7 +311,7 @@ fn file_is_binary(
             }
         }
     }
-    // For staged: peek at the indexed object.
+    // Staged: peek at the indexed object.
     let object = format!(":{file_path}");
     let output = Command::new("git")
         .arg("-C")
@@ -270,11 +326,8 @@ fn file_is_binary(
     Ok(false)
 }
 
-fn looks_binary(bytes: &[u8]) -> bool {
-    let sample = &bytes[..bytes.len().min(8192)];
-    sample.contains(&0u8)
-}
-
+/// The "after" side of the diff: working-tree contents for unstaged /
+/// untracked, indexed contents for staged.
 fn read_new_content(
     repo: &Path,
     file_path: &str,
@@ -288,7 +341,6 @@ fn read_new_content(
         }
         return Ok(std::fs::read_to_string(&path).unwrap_or_default());
     }
-    // staged
     let object = format!(":{file_path}");
     let out = Command::new("git")
         .arg("-C")
@@ -302,6 +354,9 @@ fn read_new_content(
     Ok(String::from_utf8_lossy(&out.stdout).to_string())
 }
 
+/// The "before" side of the diff: indexed contents for unstaged,
+/// HEAD contents for staged, empty for untracked (new files have no
+/// prior version).
 fn read_old_content(
     repo: &Path,
     file_path: &str,
@@ -428,7 +483,10 @@ pub fn git_discard_paths(repo_path: String, file_paths: Vec<String>) -> AppResul
         run_git(&repo, &args)?;
     }
     for rel in to_delete {
-        let target = repo.join(rel);
+        // Defense in depth: refuse to follow `../` escapes or absolute
+        // paths even though git's own `--` separator would have caught
+        // them earlier — std::fs::remove_file doesn't.
+        let target = confine_to_repo(&repo, rel)?;
         if target.exists() {
             std::fs::remove_file(&target).map_err(AppError::Io)?;
         }
@@ -445,8 +503,9 @@ pub fn git_discard_file(repo_path: String, file_path: String) -> AppResult<()> {
         &["status", "--porcelain=v1", "--", &file_path],
     )?;
     if porcelain.starts_with("??") {
-        // Delete the untracked file from the working tree.
-        let target = repo.join(&file_path);
+        // Delete the untracked file from the working tree. Confine first
+        // so a `../foo` path doesn't reach outside the repo.
+        let target = confine_to_repo(&repo, &file_path)?;
         if target.exists() {
             std::fs::remove_file(&target).map_err(AppError::Io)?;
         }
@@ -1087,6 +1146,34 @@ pub fn git_commit(repo_path: String, message: String) -> AppResult<()> {
     Ok(())
 }
 
+/// `git commit -am <msg>` — stages every modified/deleted tracked file
+/// and commits in one shot. Used by the Approve-to-PR flow to fold the
+/// agent's tracked-file edits into a single commit on the worktree
+/// branch.
+///
+/// Deliberately does NOT `git add -A`. Sweeping untracked files in was
+/// the source of "PR included random stuff that wasn't part of the
+/// task" — IDE caches, .DS_Store, build outputs, scratch files the
+/// agent left behind. Agents that need to introduce a new file are
+/// expected to `git add <path>` it themselves (Claude Code and Codex
+/// both do this when prompted to commit their own work); whatever is
+/// staged at exit time is what we commit. Anything still unstaged AND
+/// untracked stays in the worktree but never lands on the PR.
+#[tauri::command]
+pub fn git_commit_all(repo_path: String, message: String) -> AppResult<()> {
+    let repo = resolve_repo(&repo_path)?;
+    let trimmed = message.trim();
+    if trimmed.is_empty() {
+        return Err(AppError::msg("Commit message is empty"));
+    }
+    // `-a` stages modified/deleted tracked files. `-m` is the message.
+    // If there's nothing tracked to commit and nothing staged, git exits
+    // non-zero — the caller (board.store#approveCard) already skips this
+    // when porcelain status is empty, so we don't double-check here.
+    run_git(&repo, &["commit", "-am", trimmed])?;
+    Ok(())
+}
+
 /// `git push`. When `set_upstream` is true (first push on a new branch) we
 /// run `git push -u origin <branch>` so future pushes work without flags.
 #[tauri::command]
@@ -1185,6 +1272,10 @@ pub fn git_behind_ahead(
     base: String,
     head: String,
 ) -> AppResult<AheadBehind> {
+    // Refuse a ref that would be parsed as a flag — e.g. a tampered
+    // base of `--upload-pack=…` would smuggle options into `rev-list`.
+    reject_flaggish("Base ref", &base)?;
+    reject_flaggish("Head ref", &head)?;
     let repo = resolve_repo(&repo_path)?;
     // `--left-right --count A...B` returns "<behind>\t<ahead>" where
     // behind = commits in A not in B (we'd need to apply) and ahead =
@@ -1252,6 +1343,7 @@ pub fn git_remote_branches(repo_path: String) -> AppResult<Vec<String>> {
 /// macOS "unresponsive app" watchdog that crashes WKWebView.
 #[tauri::command]
 pub async fn git_rebase_onto(repo_path: String, onto: String) -> AppResult<()> {
+    reject_flaggish("Rebase target", &onto)?;
     let repo = resolve_repo(&repo_path)?;
     tokio::task::spawn_blocking(move || {
         run_git(&repo, &["rebase", &onto]).map(|_| ())
@@ -1266,6 +1358,7 @@ pub async fn git_rebase_onto(repo_path: String, onto: String) -> AppResult<()> {
 /// spawn_blocking rationale as `git_rebase_onto`.
 #[tauri::command]
 pub async fn git_merge_into(repo_path: String, from: String) -> AppResult<()> {
+    reject_flaggish("Merge source", &from)?;
     let repo = resolve_repo(&repo_path)?;
     tokio::task::spawn_blocking(move || {
         run_git(&repo, &["merge", "--no-edit", &from]).map(|_| ())
@@ -1362,16 +1455,52 @@ pub fn git_apply_patch(
 /// Files tab can open local configuration without exploding into
 /// `node_modules/`, `dist/`, and build target trees.
 #[tauri::command]
-pub fn list_repo_files(repo_path: String) -> AppResult<Vec<String>> {
+pub async fn list_repo_files(repo_path: String) -> AppResult<Vec<String>> {
     let repo = resolve_repo(&repo_path)?;
-    let mut out = git_ls_files(
-        &repo,
-        &["ls-files", "-z", "--cached", "--others", "--exclude-standard"],
-    )?;
-    let ignored = git_ls_files(
-        &repo,
-        &["ls-files", "-z", "--others", "--ignored", "--exclude-standard"],
-    )?;
+    // Async + spawn_blocking on TWO parallel tasks. This was previously
+    // a plain `pub fn` that ran on the Tauri runtime thread — the two
+    // sequential `git ls-files` calls (50-500ms total on big repos)
+    // blocked every other IPC for that whole window, so opening the
+    // sidebar's Files tab visibly froze the diff/board too. Moving each
+    // call to its own spawn_blocking lets them race on the blocking
+    // pool and frees the runtime for everything else.
+    let cached_handle = {
+        let repo = repo.clone();
+        tokio::task::spawn_blocking(move || {
+            git_ls_files(
+                &repo,
+                &[
+                    "ls-files",
+                    "-z",
+                    "--cached",
+                    "--others",
+                    "--exclude-standard",
+                ],
+            )
+        })
+    };
+    let ignored_handle = {
+        let repo = repo.clone();
+        tokio::task::spawn_blocking(move || {
+            git_ls_files(
+                &repo,
+                &[
+                    "ls-files",
+                    "-z",
+                    "--others",
+                    "--ignored",
+                    "--exclude-standard",
+                ],
+            )
+        })
+    };
+
+    let mut out = cached_handle
+        .await
+        .map_err(|e| AppError::msg(format!("ls-files task panicked: {e}")))??;
+    let ignored = ignored_handle
+        .await
+        .map_err(|e| AppError::msg(format!("ls-files (ignored) task panicked: {e}")))??;
     out.extend(
         ignored
             .into_iter()
@@ -1547,6 +1676,257 @@ pub fn write_working_file(
     }
     std::fs::write(&full, content).map_err(AppError::Io)?;
     Ok(())
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorktreeEntry {
+    pub path: String,
+    pub head: Option<String>,
+    pub branch: Option<String>,
+    pub bare: bool,
+    pub detached: bool,
+}
+
+/// Append `.squint/` to `.git/info/exclude` so the worktree dir we create
+/// inside the repo doesn't litter `git status`. Idempotent — we only write
+/// the line if it isn't already present (so the user is free to delete
+/// or move it).
+fn ensure_squint_excluded(repo: &Path) -> AppResult<()> {
+    let exclude = repo.join(".git").join("info").join("exclude");
+    let existing = std::fs::read_to_string(&exclude).unwrap_or_default();
+    let needle = ".squint/";
+    if existing.lines().any(|l| l.trim() == needle) {
+        return Ok(());
+    }
+    if let Some(parent) = exclude.parent() {
+        std::fs::create_dir_all(parent).ok();
+    }
+    let mut next = existing;
+    if !next.is_empty() && !next.ends_with('\n') {
+        next.push('\n');
+    }
+    next.push_str(needle);
+    next.push('\n');
+    std::fs::write(&exclude, next).map_err(AppError::Io)?;
+    Ok(())
+}
+
+/// Create a worktree at `worktree_path` checked out on `branch`, based on
+/// `base`. If `branch` already exists we reuse it (no `-b`); otherwise we
+/// create it off `base`. Both forms reject argv that would smuggle flags.
+///
+/// `worktree_path` may be absolute or relative to `repo_path`; we keep the
+/// caller's choice as-is so the path stored in the DB matches what `git
+/// worktree list` reports.
+#[tauri::command]
+pub fn git_worktree_add(
+    repo_path: String,
+    branch: String,
+    base: String,
+    worktree_path: String,
+) -> AppResult<String> {
+    let repo = resolve_repo(&repo_path)?;
+    reject_flaggish("branch", &branch)?;
+    reject_flaggish("base", &base)?;
+    reject_flaggish("worktree path", &worktree_path)?;
+
+    ensure_squint_excluded(&repo)?;
+
+    if let Some(parent) = Path::new(&worktree_path).parent() {
+        if !parent.as_os_str().is_empty() {
+            // Resolve against repo for relative paths so create_dir_all hits
+            // the right place; absolute parents pass through unchanged.
+            let abs = if Path::new(&worktree_path).is_absolute() {
+                parent.to_path_buf()
+            } else {
+                repo.join(parent)
+            };
+            std::fs::create_dir_all(&abs).ok();
+        }
+    }
+
+    let branch_exists = run_git(
+        &repo,
+        &[
+            "show-ref",
+            "--verify",
+            "--quiet",
+            &format!("refs/heads/{branch}"),
+        ],
+    )
+    .is_ok();
+
+    if branch_exists {
+        run_git(
+            &repo,
+            &["worktree", "add", &worktree_path, &branch],
+        )?;
+    } else {
+        run_git(
+            &repo,
+            &[
+                "worktree",
+                "add",
+                "-b",
+                &branch,
+                &worktree_path,
+                &base,
+            ],
+        )?;
+    }
+
+    // Copy gitignored bootstrap files (.env, .env.*, .npmrc, etc) from
+    // the main worktree into the new one. Without this, the agent's
+    // worktree can't actually run the project — dev servers crash on
+    // missing env vars, package installs fail without the registry
+    // override, etc. Best-effort: failures don't abort the worktree
+    // creation, the user can manually copy what's missing.
+    let resolved_worktree = if Path::new(&worktree_path).is_absolute() {
+        Path::new(&worktree_path).to_path_buf()
+    } else {
+        repo.join(&worktree_path)
+    };
+    let _ = copy_bootstrap_files(&repo, &resolved_worktree);
+
+    Ok(worktree_path)
+}
+
+/// Copy every top-level dotfile commonly excluded by `.gitignore` from
+/// `src` to `dst` so the new worktree has the env it needs to actually
+/// run the project. Only top-level entries are considered — deep
+/// recursive `.env`s belong to whatever sub-package owns them and the
+/// agent will inherit those when it cds into the subdir.
+///
+/// Patterns covered: `.env`, `.env.*`, `.envrc`, `.npmrc`, `.yarnrc`,
+/// `.tool-versions`. Files already present in `dst` are skipped so the
+/// agent can override locally without us clobbering its edits on
+/// subsequent worktree adds (unlikely but cheap to honor).
+fn copy_bootstrap_files(src: &Path, dst: &Path) -> std::io::Result<()> {
+    let entries = std::fs::read_dir(src)?;
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let name_str = match name.to_str() {
+            Some(s) => s,
+            None => continue,
+        };
+        let is_env = name_str == ".env" || name_str.starts_with(".env.");
+        let is_other =
+            matches!(name_str, ".envrc" | ".npmrc" | ".yarnrc" | ".tool-versions");
+        if !is_env && !is_other {
+            continue;
+        }
+        let from = entry.path();
+        if !from.is_file() {
+            continue;
+        }
+        let to = dst.join(&name);
+        if to.exists() {
+            continue;
+        }
+        let _ = std::fs::copy(&from, &to);
+    }
+    Ok(())
+}
+
+/// Remove a worktree by path. Uses `--force` because the agent's worktree
+/// often has uncommitted/in-progress changes when the user archives a card;
+/// the data still lives on the branch ref (unless `branch_name` is set,
+/// see below).
+///
+/// Async + `spawn_blocking` because deleting a worktree with a populated
+/// `node_modules` / `.next` / build artifacts can take seconds of disk
+/// IO — running on the Tauri IPC thread froze the entire UI while git
+/// walked the file tree. Moving it to the blocking pool keeps the rest
+/// of the app responsive while cleanup runs.
+///
+/// `branch_name` is optional: when provided, the branch is also deleted
+/// (`git branch -D`) after the worktree is gone. Used by `deleteCard` —
+/// abandoning a card should leave the repo as if the card never existed.
+/// The archive flow on Done cards leaves `branch_name` unset so the PR's
+/// branch survives.
+#[tauri::command]
+pub async fn git_worktree_remove(
+    repo_path: String,
+    worktree_path: String,
+    branch_name: Option<String>,
+) -> AppResult<()> {
+    reject_flaggish("worktree path", &worktree_path)?;
+    if let Some(b) = branch_name.as_deref() {
+        reject_flaggish("branch name", b)?;
+    }
+    let repo = resolve_repo(&repo_path)?;
+    tokio::task::spawn_blocking(move || {
+        run_git(
+            &repo,
+            &["worktree", "remove", "--force", &worktree_path],
+        )?;
+        if let Some(branch) = branch_name {
+            // `-D` (force) because the branch hasn't been merged to its
+            // upstream — the agent's work is being discarded.
+            // Failures here are non-fatal (branch may already be gone,
+            // or never existed if the agent never reached spawn). We
+            // log to stderr but don't surface to the caller because the
+            // user has already moved on from the card.
+            if let Err(e) = run_git(&repo, &["branch", "-D", &branch]) {
+                eprintln!("git_worktree_remove: branch delete failed: {e}");
+            }
+        }
+        Ok(())
+    })
+    .await
+    .map_err(|e| AppError::msg(format!("worktree remove panicked: {e}")))?
+}
+
+/// Parse `git worktree list --porcelain`. Each record is a block separated
+/// by a blank line: `worktree <path>`, then optional `HEAD <sha>`,
+/// `branch <refname>`, `bare`, `detached`. We surface that as structured
+/// data so the UI can render an "active worktrees" panel later.
+#[tauri::command]
+pub fn git_worktree_list(repo_path: String) -> AppResult<Vec<WorktreeEntry>> {
+    let repo = resolve_repo(&repo_path)?;
+    let raw = run_git_string(&repo, &["worktree", "list", "--porcelain"])?;
+    let mut out: Vec<WorktreeEntry> = Vec::new();
+    let mut cur: Option<WorktreeEntry> = None;
+    for line in raw.lines() {
+        if line.is_empty() {
+            if let Some(entry) = cur.take() {
+                out.push(entry);
+            }
+            continue;
+        }
+        if let Some(path) = line.strip_prefix("worktree ") {
+            if let Some(entry) = cur.take() {
+                out.push(entry);
+            }
+            cur = Some(WorktreeEntry {
+                path: path.to_string(),
+                head: None,
+                branch: None,
+                bare: false,
+                detached: false,
+            });
+        } else if let Some(entry) = cur.as_mut() {
+            if let Some(sha) = line.strip_prefix("HEAD ") {
+                entry.head = Some(sha.to_string());
+            } else if let Some(refname) = line.strip_prefix("branch ") {
+                entry.branch = Some(
+                    refname
+                        .strip_prefix("refs/heads/")
+                        .unwrap_or(refname)
+                        .to_string(),
+                );
+            } else if line == "bare" {
+                entry.bare = true;
+            } else if line == "detached" {
+                entry.detached = true;
+            }
+        }
+    }
+    if let Some(entry) = cur.take() {
+        out.push(entry);
+    }
+    Ok(out)
 }
 
 #[cfg(test)]

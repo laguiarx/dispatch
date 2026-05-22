@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { useRepoStore } from "@/features/repository/repository.store";
+import { useBoardStore } from "@/features/board/board.store";
 import { isTauri } from "@/lib/tauri";
 
 /**
@@ -44,11 +45,16 @@ function handle(id: string, get: typeof useRepoStore.getState): void {
         /* surfaced via toast */
       });
       return;
-    case "file:open-repo":
-      s.openRepositoryPicker().catch(() => {
-        /* surfaced via error state */
-      });
+    case "file:add-project":
+      void useBoardStore.getState().addProjectFromPicker();
       return;
+    case "file:new-card": {
+      const board = useBoardStore.getState();
+      if (s.reviewedCardId !== null) return; // No-op in Review mode
+      if (board.projects.length === 0) return;
+      board.setNewCardOpen(true);
+      return;
+    }
     case "file:go-to-file":
       if (s.repository) s.setPaletteMode("files");
       return;

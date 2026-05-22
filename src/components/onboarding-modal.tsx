@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useRepoStore } from "@/features/repository/repository.store";
+import { useBoardStore } from "@/features/board/board.store";
 import {
   detectIntegrations,
   type Integration,
@@ -81,7 +82,16 @@ export function OnboardingModal() {
   const open = useRepoStore((s) => s.onboardingOpen);
   const setOpen = useRepoStore((s) => s.setOnboardingOpen);
   const setFirstRunCompleted = useRepoStore((s) => s.setFirstRunCompleted);
-  const openRepositoryPicker = useRepoStore((s) => s.openRepositoryPicker);
+  // The onboarding "Open a repo" CTA used to call `openRepositoryPicker`
+  // — that's the legacy diff-mode flow, which opens the repo as the
+  // active diff target but never registers it as a board project. The
+  // result was a brand-new user finishing onboarding only to find the
+  // Workspace sidebar still empty. We now go through `addProjectFromPicker`
+  // (the same action the `+` button in the sidebar uses), which calls
+  // the Rust `ensure_project` upsert and surfaces the repo as a kanban
+  // board immediately.
+  const addProjectFromPicker = useBoardStore((s) => s.addProjectFromPicker);
+  const pushToast = useRepoStore((s) => s.pushToast);
 
   // Four screens: welcome (0) → Homebrew install (1) → tools install (2)
   // → done (3). Splitting Homebrew off as its own step matters because
@@ -239,7 +249,14 @@ export function OnboardingModal() {
             onPickRepo={async () => {
               setFirstRunCompleted(true);
               setOpen(false);
-              await openRepositoryPicker();
+              try {
+                await addProjectFromPicker();
+              } catch (err) {
+                pushToast(
+                  err instanceof Error ? err.message : String(err),
+                  "danger",
+                );
+              }
             }}
             onFinish={finish}
           />

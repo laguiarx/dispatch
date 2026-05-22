@@ -153,6 +153,12 @@ export function Sidebar() {
     setMultiSelection([], { path, staged });
   };
 
+  // Review mode banner lives at the top of the sidebar (replaces the old
+  // banner above DiffPane). Single sidebar slot is shared with
+  // ProjectSidebar — switching modes only swaps the content below.
+  const reviewedCardId = useRepoStore((s) => s.reviewedCardId);
+  const exitReviewMode = useRepoStore((s) => s.exitReviewMode);
+
   return (
     <aside
       className={cn(
@@ -162,6 +168,24 @@ export function Sidebar() {
         "backdrop-blur-card backdrop-saturate-[140%]",
       )}
     >
+      {reviewedCardId ? (
+        <div className="flex items-center px-2 h-[34px] gap-1 border-b border-bd-1 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              void exitReviewMode();
+            }}
+            className={cn(
+              "inline-flex items-center gap-1.5 h-6 px-2 rounded-1",
+              "text-fg-1 text-[11.5px] font-medium",
+              "hover:bg-bg-hover hover:text-fg-0 transition-colors",
+            )}
+          >
+            <span className="text-fg-3">←</span>
+            <span>Back to board</span>
+          </button>
+        </div>
+      ) : null}
       <div className="flex items-center px-2 h-[34px] gap-0.5 border-b border-bd-1 shrink-0">
         <button
           className={cn(TAB, TAB_HOVER, sidebarTab === "changes" && TAB_ACTIVE)}
