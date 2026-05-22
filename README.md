@@ -5,9 +5,18 @@ shipping code changes quickly. It is intentionally focused: open a repository,
 inspect the diff, stage exactly what should ship, write the commit, and create a
 pull request without leaving the app.
 
-<p align="center">
-  <img width="1799" height="1128" alt="Squint reviewing a repository diff" src="https://github.com/user-attachments/assets/fc8d4518-3288-4719-982b-5c33df3ef4c5" />
-</p>
+F<img width="1800" height="1169" alt="Screenshot 2026-05-22 at 16 50 51" src="https://github.com/user-attachments/assets/a5a30e2b-aac0-4d48-9e6f-7508d9320d2e" />
+<img width="1800" height="1169" alt="Screenshot 2026-05-22 at 16 50 37" src="https://github.com/user-attachments/assets/aab9573e-f52b-480d-899e-6ba61615d459" />
+<img width="1800" height="1169" alt="Screenshot 2026-05-22 at 16 49 03" src="https://github.com/user-attachments/assets/ee053c8d-999f-4745-bbb7-562f9e7bd7eb" />
+<img width="1800" height="1169" alt="Screenshot 2026-05-22 at 16 48 49" src="https://github.com/user-attachments/assets/b8809224-1674-44b6-a4f1-3ed66b65cb97" />
+<img width="1800" height="1169" alt="Screenshot 2026-05-22 at 16 48 46" src="https://github.com/user-attachments/assets/17f77196-0fd3-42a8-aaf8-d3b5c0e3b67e" />
+<img width="1800" height="1169" alt="Screenshot 2026-05-22 at 16 48 43" src="https://github.com/user-attachments/assets/b14837b0-3400-4bf7-9804-796859df0b44" />
+<img width="1800" height="1169" alt="Screenshot 2026-05-22 at 16 48 39" src="https://github.com/user-attachments/assets/12359752-cfca-4196-8515-4e7a516378c8" />
+<img width="1800" height="1169" alt="Screenshot 2026-05-22 at 16 48 19" src="https://github.com/user-attachments/assets/935eb194-575e-4014-a4b2-53a305bee386" />
+<img width="1800" height="1169" alt="Screenshot 2026-05-22 at 16 29 15" src="https://github.com/user-attachments/assets/876f6088-db3b-41a2-892d-077ccef80708" />
+<img width="1800" height="1169" alt="Screenshot 2026-05-22 at 16 29 10" src="https://github.com/user-attachments/assets/5da7e34e-60de-4203-a5a2-50021b9beca9" />
+<img width="1800" height="1169" alt="Screenshot 2026-05-22 at 16 28 39" src="https://github.com/user-attachments/assets/c50a388b-f830-437f-8219-0fd964a37a57" />
+
 
 ## Highlights
 
