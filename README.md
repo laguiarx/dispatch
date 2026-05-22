@@ -9,6 +9,14 @@ The core loop is intentionally tight: capture a task, send it to Codex or Claude
 Code, watch the run move through the board, inspect the generated diff, and open
 a pull request without losing context.
 
+<p align="center">
+  <a href="docs/assets/dispatch-demo.mp4">
+    <img src="docs/assets/dispatch-demo.gif" alt="Dispatch walkthrough: create an agent task, review the diff, and open a pull request" width="960">
+  </a>
+</p>
+
+<p align="center"><sub>18-second walkthrough. Click the animation for the MP4.</sub></p>
+
 ## Agent Workflow
 
 1. **Capture work in Backlog.** Create a card with a brief, attachments, target
