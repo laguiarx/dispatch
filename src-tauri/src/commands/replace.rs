@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::commands::resolve_repo;
+use crate::commands::{confine_to_repo, resolve_repo};
 use crate::commands::search::{
     build_regex, collect_targets, looks_binary, relative, SearchRequest,
 };
@@ -154,7 +154,13 @@ pub fn replace_apply(request: ApplyReplaceRequest) -> AppResult<u32> {
         if target_lines.is_empty() {
             continue;
         }
-        let full = repo.join(&selection.file_path);
+        // selection.file_path comes from earlier search results in the
+        // renderer's hand — confine so a tampered request can't rewrite
+        // files outside the repo.
+        let full = match confine_to_repo(&repo, &selection.file_path) {
+            Ok(p) => p,
+            Err(_) => continue,
+        };
         let metadata = match std::fs::metadata(&full) {
             Ok(m) => m,
             Err(_) => continue,

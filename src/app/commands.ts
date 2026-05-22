@@ -316,3 +316,110 @@ export function buildFileCommands(d: FileDeps): CommandItem[] {
 
   return out;
 }
+
+// ----------------------------------------------------------------------
+// Board-mode command palette
+// ----------------------------------------------------------------------
+
+type BoardDeps = {
+  projects: { id: string; name: string }[];
+  activeProjectId: string | null;
+  setActiveProject: (id: string | null) => Promise<void>;
+  addProjectFromPicker: () => Promise<unknown>;
+  setNewCardOpen: (open: boolean) => void;
+  setSettingsOpen: (open: boolean) => void;
+  openShortcuts: () => void;
+  setTheme: (theme: Theme) => void;
+  theme: Theme;
+  pushToast: (text: string) => void;
+};
+
+/**
+ * Commands shown in the palette while the workspace board is the active
+ * view. Deliberately a much smaller surface than the diff palette —
+ * file-staging actions and AI tooling don't apply here.
+ */
+export function buildBoardCommands(d: BoardDeps): CommandItem[] {
+  const commands: CommandItem[] = [];
+
+  if (d.projects.length > 0) {
+    commands.push({
+      id: "new-card",
+      name: "New card…",
+      section: "Workspace",
+      icon: "sparkles",
+      keywords: "card task agent create new",
+      kbd: ["⌘N"],
+      run: () => d.setNewCardOpen(true),
+    });
+  }
+  commands.push({
+    id: "add-project",
+    name: "Add project…",
+    section: "Workspace",
+    icon: "folder",
+    keywords: "project repository add new pick folder",
+    kbd: ["⌘O"],
+    run: () => {
+      void d.addProjectFromPicker();
+    },
+  });
+  commands.push({
+    id: "view-all-projects",
+    name: "Show all projects",
+    section: "Workspace",
+    icon: "folder",
+    keywords: "all projects board filter",
+    badge: d.activeProjectId === null ? "Active" : undefined,
+    run: () => {
+      void d.setActiveProject(null);
+    },
+  });
+  for (const p of d.projects) {
+    commands.push({
+      id: `switch-project-${p.id}`,
+      name: `Switch project: ${p.name}`,
+      section: "Workspace",
+      icon: "folder",
+      keywords: `project ${p.name}`,
+      badge: d.activeProjectId === p.id ? "Active" : undefined,
+      run: () => {
+        void d.setActiveProject(p.id);
+      },
+    });
+  }
+
+  commands.push({
+    id: "preferences",
+    name: "Open Preferences…",
+    section: "Settings",
+    icon: "gear",
+    keywords: "preferences settings options",
+    kbd: ["⌘,"],
+    run: () => d.setSettingsOpen(true),
+  });
+  commands.push({
+    id: "open-shortcuts",
+    name: "Show keyboard shortcuts",
+    section: "Settings",
+    icon: "keyboard",
+    keywords: "shortcuts keybindings hotkeys",
+    run: () => d.openShortcuts(),
+  });
+  for (const th of THEMES) {
+    commands.push({
+      id: `theme-${th.id}`,
+      name: `Switch theme: ${th.label}`,
+      section: "Appearance",
+      icon: "theme",
+      keywords: `theme ${th.label} color`,
+      badge: th.id === d.theme ? "Active" : undefined,
+      run: () => {
+        d.setTheme(th.id);
+        d.pushToast(`Theme: ${th.label}`);
+      },
+    });
+  }
+
+  return commands;
+}

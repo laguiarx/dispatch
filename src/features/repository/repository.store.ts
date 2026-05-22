@@ -22,11 +22,9 @@ import type { AiKind } from "@/features/ai/ai.types";
 import type { ToastKind, ToastMessage } from "@/components/toast";
 import {
   pushRecentRepo,
-  readLastRepoPath,
   readRecentRepos,
   readSettings,
   removeRecentRepo,
-  writeLastRepoPath,
   writeSettings,
   type Density,
   type DiffExpansion,
@@ -111,8 +109,39 @@ export function filteredFiles(
   });
 }
 
+/**
+ * One row in the terminal drawer's tab strip. Each tab owns its own PTY
+ * (created lazily by `TerminalDrawerInner` keyed by `id`). `pendingCommand`
+ * is a one-shot — the drawer types it once the PTY is ready and then calls
+ * `clearTabPendingCommand` to null it out so React re-renders don't replay
+ * the keystrokes.
+ */
+export type TerminalTab = {
+  id: string;
+  cwd: string | null;
+  title: string;
+  pendingCommand: string | null;
+  /**
+   * When set, the pane displays a setup-script run instead of opening a
+   * PTY. The pane subscribes to `setup://run/<setupRunId>/data` and
+   * writes the lines straight into xterm — read-only (no PTY, no
+   * keystrokes). On `setup://run/<setupRunId>/exit` the pane writes a
+   * final status line and stops listening.
+   */
+  setupRunId?: string;
+};
+
 type State = {
   repository: Repository | null;
+  /**
+   * Review mode: when a card on the board moves to Review, the user opens
+   * its worktree as the active repo so the existing DiffPane / Sidebar /
+   * staging actions all operate against it without us refactoring 80+
+   * call sites that read `repository.path`. We remember the previous
+   * (non-worktree) repo path here so "← back to board" can restore it.
+   */
+  reviewedCardId: string | null;
+  previousRepoPath: string | null;
   files: ChangedFile[];
   selectedFilePath: string | null;
   /**
@@ -264,34 +293,19 @@ type State = {
 
   /**
    * Integrated terminal drawer at the bottom of the workspace. Toggled with
-   * `Ctrl+\`` and a remembered height between sessions. v1 ships a single
-   * PTY per window — the actual session id is owned by `TerminalDrawer.tsx`,
-   * the store only tracks UI visibility/size so that closing the drawer
-   * preserves drawer height across re-opens.
-   */
-  /**
-   * Whether the terminal drawer is currently VISIBLE. Decoupled from
-   * `terminalSessionAlive` so the user can hide the drawer (X button)
-   * without losing the running shell — opening it again resumes the same
-   * scrollback / running process.
+   * `Ctrl+\`` and a remembered height between sessions.
+   *
+   * Multi-tab model (à la VSCode): the drawer owns a list of `TerminalTab`s,
+   * each backed by its own PTY. Clicking a project script ("Dev", "Test")
+   * always opens a *new* tab — the user can keep `bun run dev` alive in
+   * one tab and pop a fresh shell next to it without disturbing the long
+   * running process. Hiding the drawer leaves every tab alive; the trash
+   * button kills them all.
    */
   terminalOpen: boolean;
-  /**
-   * Whether the PTY session backing the terminal is alive. Becomes true the
-   * first time the drawer is opened (or a command is queued from
-   * onboarding); cleared only when the user explicitly kills it via the
-   * trash button in the drawer header, when the repo changes, or when the
-   * shell itself exits. Hiding the drawer does NOT set this to false.
-   */
-  terminalSessionAlive: boolean;
   terminalHeight: number;
-  /**
-   * Command queued for the integrated terminal — picked up by `TerminalDrawer`
-   * once its PTY session is ready, written verbatim (with a trailing `\n`),
-   * then cleared. Used by the onboarding modal's ▶ install buttons so a
-   * single click both opens the drawer and types the command for the user.
-   */
-  pendingTerminalCommand: string | null;
+  terminalTabs: TerminalTab[];
+  activeTerminalTabId: string | null;
 
   loading: boolean;
   errorMessage: string | null;
@@ -312,7 +326,6 @@ type State = {
   // actions
   setTheme: (theme: Theme) => void;
   setDensity: (density: Density) => void;
-  setAutoOpenLast: (value: boolean) => void;
   setDiffExpansion: (value: DiffExpansion) => void;
   setSearchView: (value: SearchView) => void;
   setUiZoom: (value: number) => void;
@@ -328,6 +341,12 @@ type State = {
     kind: "commit" | "pr" | "summary" | "risk" | "branch",
     value: string,
   ) => void;
+  /** Toggle one of the notification preferences (enabled / per-event /
+   *  sound). Persisted to localStorage immediately. */
+  setNotificationPref: (
+    key: keyof Settings["notifications"],
+    value: boolean,
+  ) => void;
   /**
    * Generate a branch name suggestion from staged/working changes. Returns
    * the trimmed string from the CLI, or null on error. Used inline by the
@@ -340,29 +359,53 @@ type State = {
   setRightSidebarWidth: (px: number) => void;
   toggleLeftSidebar: () => void;
   toggleRightSidebar: () => void;
-  /**
-   * Show/hide the integrated terminal drawer. Hiding does NOT kill the PTY
-   * — re-opening resumes the same session. To actually destroy the
-   * session call `killTerminalSession`.
-   */
+  /** Show/hide the drawer. Hiding does NOT kill any tabs. */
   setTerminalOpen: (open: boolean) => void;
-  /** Flip the terminal drawer's visibility (used by `⌘\`` / `⌘J`). */
-  toggleTerminal: () => void;
   /**
-   * Kill the PTY session, dispose xterm, and hide the drawer. Wired to the
-   * trash icon in the drawer header — the X next to it only HIDES.
+   * Flip the drawer's visibility (used by `⌘\`` / `⌘J`). When opening with
+   * zero tabs, also spawns a default shell tab so the user sees a usable
+   * prompt instead of an empty drawer.
    */
+  toggleTerminal: () => void;
+  /** Kill every PTY, drop every tab, hide the drawer. */
   killTerminalSession: () => void;
   /** Persist the drawer's height after a user resize. */
   setTerminalHeight: (px: number) => void;
+  /** Persist the drawer's right-dock width after a user resize. */
+  setTerminalRightWidth: (px: number) => void;
+  /** Toggle the terminal between docking at the bottom vs the right side. */
+  setTerminalPosition: (position: "bottom" | "right") => void;
   /**
-   * Open the integrated terminal (if not already open) and queue `cmd` to be
-   * typed + run as soon as the PTY is ready. The TerminalDrawer reads
-   * `pendingTerminalCommand` from the store and calls
-   * `clearPendingTerminalCommand` once it has injected it.
+   * Spawn a new terminal tab. If `cmd` is set it'll be typed + run as soon
+   * as the PTY is ready (see `TerminalDrawer`'s pending-command effect).
+   * The new tab becomes active and the drawer opens. Returns the new id.
+   */
+  openTerminalTab: (opts?: {
+    cwd?: string | null;
+    title?: string;
+    cmd?: string;
+    setupRunId?: string;
+  }) => string;
+  /** Focus a specific tab. */
+  setActiveTerminalTab: (id: string) => void;
+  /** Tear down one tab (its PTY too). If it was the last tab the drawer
+   *  hides itself — the next ⌘\` re-spawns a default shell. */
+  closeTerminalTab: (id: string) => void;
+  /** Tab-level callback — once the drawer has injected the queued command
+   *  it clears the field so the effect doesn't re-fire on every render. */
+  clearTabPendingCommand: (id: string) => void;
+  /**
+   * Shortcut: open a new tab at the default cwd and pre-type `cmd`. Kept
+   * for the onboarding ▶ buttons and any other "just run this for me"
+   * caller — they don't care about cwd.
    */
   runInTerminal: (cmd: string) => void;
-  clearPendingTerminalCommand: () => void;
+  /**
+   * Spawn a NEW tab anchored at `cwd` and pre-type `cmd`. Used by the
+   * project-script runner so each "Dev" / "Test" click lands in its own
+   * tab — long-running processes don't fight for the single shell.
+   */
+  runInTerminalAt: (cwd: string, cmd: string) => void;
   setSettingsOpen: (open: boolean) => void;
   setShortcutsOpen: (open: boolean) => void;
   setOnboardingOpen: (open: boolean) => void;
@@ -373,6 +416,14 @@ type State = {
   openRepositoryFromPath: (path: string) => Promise<void>;
   openRepositoryPicker: () => Promise<void>;
   closeRepository: () => void;
+  /**
+   * Swap the active repository to a card's worktree without touching the
+   * recent-repos list or the last-opened-path setting. The previous repo
+   * path is remembered so `exitReviewMode` can restore it.
+   */
+  enterReviewMode: (cardId: string, worktreePath: string) => Promise<void>;
+  /** Restore the repo that was active before `enterReviewMode`. */
+  exitReviewMode: () => Promise<void>;
   refresh: () => Promise<void>;
 
   /**
@@ -592,6 +643,22 @@ type State = {
   pushToast: (text: string, kind?: ToastKind) => void;
   setError: (message: string | null) => void;
 };
+
+/**
+ * Compact a command string into something readable in a tab strip:
+ * collapse runs of whitespace, drop noisy quoting, and cap the length.
+ */
+function truncateTabTitle(cmd: string): string {
+  const collapsed = cmd.trim().replace(/\s+/g, " ");
+  return collapsed.length > 24 ? collapsed.slice(0, 23) + "…" : collapsed;
+}
+
+/** Last path segment, stripped of trailing slashes. */
+function basename(p: string): string {
+  const trimmed = p.replace(/[/\\]+$/g, "");
+  const idx = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
+  return idx >= 0 ? trimmed.slice(idx + 1) : trimmed;
+}
 
 /** Persisted height of the integrated terminal drawer (px). */
 const TERMINAL_HEIGHT_KEY = "squint:terminal-height";
@@ -913,6 +980,8 @@ const notifiedGoneBranches = new Set<string>();
 
 export const useRepoStore = create<State>((set, get) => ({
   repository: null,
+  reviewedCardId: null,
+  previousRepoPath: null,
   files: [],
   selectedFilePath: null,
   selectedFileStaged: null,
@@ -981,9 +1050,9 @@ export const useRepoStore = create<State>((set, get) => ({
   gitMenuOpen: false,
 
   terminalOpen: false,
-  terminalSessionAlive: false,
   terminalHeight: readTerminalHeight(),
-  pendingTerminalCommand: null,
+  terminalTabs: [],
+  activeTerminalTabId: null,
 
   loading: false,
   errorMessage: null,
@@ -1014,13 +1083,6 @@ export const useRepoStore = create<State>((set, get) => ({
       const next = { ...s.settings, density };
       writeSettings(next);
       applyDensity(density);
-      return { settings: next };
-    });
-  },
-  setAutoOpenLast: (autoOpenLast) => {
-    set((s) => {
-      const next = { ...s.settings, autoOpenLast };
-      writeSettings(next);
       return { settings: next };
     });
   },
@@ -1100,6 +1162,16 @@ export const useRepoStore = create<State>((set, get) => ({
       const next = {
         ...s.settings,
         aiSystemPrompts: { ...s.settings.aiSystemPrompts, [kind]: value },
+      };
+      writeSettings(next);
+      return { settings: next };
+    });
+  },
+  setNotificationPref: (key, value) => {
+    set((s) => {
+      const next = {
+        ...s.settings,
+        notifications: { ...s.settings.notifications, [key]: value },
       };
       writeSettings(next);
       return { settings: next };
@@ -1210,26 +1282,26 @@ export const useRepoStore = create<State>((set, get) => ({
       writeSettings(next);
       return { settings: next };
     }),
-  setTerminalOpen: (terminalOpen) =>
-    set((s) => ({
-      terminalOpen,
-      // Opening the drawer guarantees a live session; closing leaves
-      // whatever session was running intact (hidden but alive).
-      terminalSessionAlive: terminalOpen ? true : s.terminalSessionAlive,
-    })),
-  toggleTerminal: () =>
-    set((s) => {
-      const next = !s.terminalOpen;
-      return {
-        terminalOpen: next,
-        terminalSessionAlive: next ? true : s.terminalSessionAlive,
-      };
-    }),
+  setTerminalOpen: (terminalOpen) => set({ terminalOpen }),
+  toggleTerminal: () => {
+    const s = get();
+    if (s.terminalOpen) {
+      set({ terminalOpen: false });
+      return;
+    }
+    // Opening with no tabs would just show an empty strip — spawn a
+    // default shell tab so the user sees a usable prompt right away.
+    if (s.terminalTabs.length === 0) {
+      get().openTerminalTab({});
+      return;
+    }
+    set({ terminalOpen: true });
+  },
   killTerminalSession: () =>
     set({
       terminalOpen: false,
-      terminalSessionAlive: false,
-      pendingTerminalCommand: null,
+      terminalTabs: [],
+      activeTerminalTabId: null,
     }),
   setTerminalHeight: (px) => {
     // Clamp so the drawer can't eat the entire main pane or collapse below
@@ -1241,13 +1313,84 @@ export const useRepoStore = create<State>((set, get) => ({
       return { terminalHeight: h };
     });
   },
-  runInTerminal: (cmd) =>
-    set({
+  setTerminalRightWidth: (px) => {
+    // Same idea as `setTerminalHeight`: clamp so a right-docked terminal
+    // can't shrink to unreadable widths or eat the diff/board column.
+    const w = Math.max(280, Math.min(900, Math.round(px)));
+    set((s) => {
+      if (s.settings.terminalRightWidth === w) return s;
+      const next: Settings = { ...s.settings, terminalRightWidth: w };
+      writeSettings(next);
+      return { settings: next };
+    });
+  },
+  setTerminalPosition: (position) => {
+    set((s) => {
+      if (s.settings.terminalPosition === position) return s;
+      const next: Settings = { ...s.settings, terminalPosition: position };
+      writeSettings(next);
+      return { settings: next };
+    });
+  },
+  openTerminalTab: (opts) => {
+    const id = `tab-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const cmd = opts?.cmd ?? null;
+    const title =
+      opts?.title ??
+      (cmd
+        ? truncateTabTitle(cmd)
+        : opts?.cwd
+          ? basename(opts.cwd) || "shell"
+          : "shell");
+    const tab: TerminalTab = {
+      id,
+      cwd: opts?.cwd ?? null,
+      title,
+      pendingCommand: cmd,
+      setupRunId: opts?.setupRunId,
+    };
+    set((s) => ({
+      terminalTabs: [...s.terminalTabs, tab],
+      activeTerminalTabId: id,
       terminalOpen: true,
-      terminalSessionAlive: true,
-      pendingTerminalCommand: cmd,
+    }));
+    return id;
+  },
+  setActiveTerminalTab: (id) =>
+    set((s) =>
+      s.terminalTabs.some((t) => t.id === id)
+        ? { activeTerminalTabId: id }
+        : s,
+    ),
+  closeTerminalTab: (id) =>
+    set((s) => {
+      const remaining = s.terminalTabs.filter((t) => t.id !== id);
+      // If we just closed the active one, pick the previous (or first) tab.
+      let nextActive = s.activeTerminalTabId;
+      if (nextActive === id) {
+        const closedIdx = s.terminalTabs.findIndex((t) => t.id === id);
+        nextActive =
+          remaining[Math.max(0, closedIdx - 1)]?.id ?? remaining[0]?.id ?? null;
+      }
+      // No tabs left → hide the drawer so the next ⌘` spawns a fresh shell.
+      return {
+        terminalTabs: remaining,
+        activeTerminalTabId: nextActive,
+        terminalOpen: remaining.length === 0 ? false : s.terminalOpen,
+      };
     }),
-  clearPendingTerminalCommand: () => set({ pendingTerminalCommand: null }),
+  clearTabPendingCommand: (id) =>
+    set((s) => ({
+      terminalTabs: s.terminalTabs.map((t) =>
+        t.id === id ? { ...t, pendingCommand: null } : t,
+      ),
+    })),
+  runInTerminal: (cmd) => {
+    get().openTerminalTab({ cmd });
+  },
+  runInTerminalAt: (cwd, cmd) => {
+    get().openTerminalTab({ cwd, cmd });
+  },
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
   setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),
   setOnboardingOpen: (onboardingOpen) => set({ onboardingOpen }),
@@ -1364,7 +1507,6 @@ export const useRepoStore = create<State>((set, get) => ({
     set({ loading: true, errorMessage: null });
     try {
       const repository = await repoApi.openRepository(path);
-      writeLastRepoPath(repository.path);
       const recentRepos = pushRecentRepo({
         path: repository.path,
         name: repository.name,
@@ -1376,6 +1518,10 @@ export const useRepoStore = create<State>((set, get) => ({
       const files = decorate(await gitApi.getRepoStatus(repository.path));
       set({
         repository,
+        // Switching repos via the normal flow always exits any active
+        // review — they're conceptually different navigation actions.
+        reviewedCardId: null,
+        previousRepoPath: null,
         files,
         reviewedPaths,
         recentRepos,
@@ -1399,7 +1545,16 @@ export const useRepoStore = create<State>((set, get) => ({
         stashesLoading: false,
         pendingStashCheckout: null,
       });
-      // File index is built lazily — only when the user opens the ⌘P palette.
+      // Warm the repo-files list in the background. Used by both the
+      // ⌘P palette AND the sidebar Files tab — without prefetch, the
+      // first click on Files paid a full `git ls-files` round trip
+      // (~50-200ms on big repos) before any rows could render, which
+      // felt like a freeze. Now the IPC overlaps with whatever the user
+      // is doing in the diff/board view; by the time they open the
+      // tab the list is usually already populated.
+      void get().fetchRepoFiles().catch(() => {
+        /* non-fatal — fetchRepoFiles already surfaces its own error */
+      });
     } catch (err) {
       // On failure (e.g. folder deleted), drop the stale entry from recents.
       const recentRepos = removeRecentRepo(path);
@@ -1422,9 +1577,10 @@ export const useRepoStore = create<State>((set, get) => ({
   },
 
   closeRepository: () => {
-    writeLastRepoPath(null);
     set({
       repository: null,
+      reviewedCardId: null,
+      previousRepoPath: null,
       files: [],
       selectedFilePath: null,
       selectedFileStaged: null,
@@ -1464,6 +1620,69 @@ export const useRepoStore = create<State>((set, get) => ({
       pendingStashCheckout: null,
       errorMessage: null,
     });
+  },
+
+  enterReviewMode: async (cardId, worktreePath) => {
+    const current = get().repository;
+    // Remember where to go back to. If we're already in review mode, keep
+    // the first non-review path we came from.
+    const previousRepoPath =
+      get().previousRepoPath ?? current?.path ?? null;
+    set({ loading: true, errorMessage: null });
+    try {
+      const repository = await repoApi.openRepository(worktreePath);
+      const reviewedPaths = loadReviewed(repository.path);
+      const decorate = (files: ChangedFile[]) =>
+        files.map((f) => ({ ...f, reviewed: reviewedPaths.has(f.path) }));
+      const files = decorate(await gitApi.getRepoStatus(repository.path));
+      set({
+        repository,
+        reviewedCardId: cardId,
+        previousRepoPath,
+        files,
+        reviewedPaths,
+        selectedFilePath: files[0]?.path ?? null,
+        selectedFileStaged: files[0]?.staged ?? null,
+        openTabs: files[0]
+          ? [{ path: files[0].path, staged: files[0].staged }]
+          : [],
+        multiSelection: new Set(),
+        multiSelectAnchor: null,
+        edits: {},
+        savedEdits: {},
+        // Reset the repo-files cache when entering review on a different
+        // worktree — otherwise the sidebar's Files tab would render the
+        // PREVIOUS repo's tree (the cached array survived the swap) and
+        // `fetchRepoFiles`'s "already populated" guard would skip the
+        // refresh. The undefined-state below also triggers the
+        // background prefetch right after we set state.
+        repoFiles: [],
+        repoFilesLoading: false,
+        loading: false,
+      });
+      // Same prefetch as `openRepositoryFromPath`: warm the Files tab
+      // in the background so clicking it after the review opens is
+      // instant. The IPC is now async + parallelized so it won't block
+      // other commands.
+      void get().fetchRepoFiles().catch(() => {
+        /* non-fatal — fetchRepoFiles surfaces its own error */
+      });
+    } catch (err) {
+      set({
+        loading: false,
+        errorMessage: err instanceof Error ? err.message : String(err),
+      });
+    }
+  },
+
+  exitReviewMode: async () => {
+    const prev = get().previousRepoPath;
+    set({ reviewedCardId: null, previousRepoPath: null });
+    if (!prev) return;
+    // Reuse the standard open path so recents / last-repo settle back to
+    // the user's original project, and all the side data (branches,
+    // stashes, etc) reloads against it.
+    await get().openRepositoryFromPath(prev);
   },
 
   refresh: async () => {
@@ -1650,13 +1869,28 @@ export const useRepoStore = create<State>((set, get) => ({
     const next = visible[nextIdx];
     set({ selectedFilePath: next.path, selectedFileStaged: next.staged });
 
-    // Prefetch the file the user is most likely to navigate to next so
-    // it's already in cache by the time they hit ⌥↓ / ⌥↑ again. The cost
-    // is one extra background `git diff` that runs in parallel on the
-    // Rust blocking pool (doesn't block the foreground fetch).
+    // Prefetch a sliding window in the direction of travel so the user
+    // can hold ⌥↓/↑ and always hit a warm cache. Before this we only
+    // prefetched the +1 peek, which lost the race once the user
+    // sustained 30Hz key-repeat — the foreground diff fetch (~30-80ms
+    // for a typical TS file, longer for Prisma-generated giants) ran
+    // serially behind every navigation and the user saw "Loading…" on
+    // every step. Three is the sweet spot: cheap enough that prefetches
+    // don't pile up if the user changes direction, deep enough to mask
+    // the IPC latency at sustained holds.
     const repoPath = state.repository.path;
-    const peek = visible[(nextIdx + direction + visible.length) % visible.length];
-    if (peek && (peek.path !== next.path || peek.staged !== next.staged)) {
+    const PREFETCH_AHEAD = 3;
+    for (let step = 1; step <= PREFETCH_AHEAD; step++) {
+      // Two-stage modulo handles negative `direction * step` cleanly
+      // without depending on `step` for the wrap addend (the previous
+      // formulation `+ length * step` worked but scaled the wrap by
+      // step, which is just confusing).
+      const peekIdx =
+        ((nextIdx + direction * step) % visible.length + visible.length) %
+        visible.length;
+      const peek = visible[peekIdx];
+      if (!peek) continue;
+      if (peek.path === next.path && peek.staged === next.staged) continue;
       gitApi.prefetchFileDiff(repoPath, peek.path, peek.staged);
     }
   },
@@ -3151,7 +3385,3 @@ export const useRepoStore = create<State>((set, get) => ({
     }
   },
 }));
-
-export function getLastRepoPath(): string | null {
-  return readLastRepoPath();
-}

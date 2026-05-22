@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useRepoStore } from "@/features/repository/repository.store";
 import { BTN_GHOST } from "@/lib/btn";
-import type { DiffExpansion, SearchView } from "@/lib/paths";
+import { sendTestNotification } from "@/lib/notify";
+import type { DiffExpansion, SearchView, Settings } from "@/lib/paths";
 import {
   THEME_PRESETS,
   TWEAKABLE_COLORS,
@@ -13,7 +14,7 @@ import { I, type IconName } from "./icons";
 import { Kbd } from "./kbd";
 import { Overlay } from "./overlay";
 
-type TabId = "appearance" | "diff" | "ai" | "startup";
+type TabId = "appearance" | "diff" | "ai" | "notifications";
 
 const TABS: { id: TabId; label: string; icon: IconName; hint: string }[] = [
   {
@@ -24,7 +25,12 @@ const TABS: { id: TabId; label: string; icon: IconName; hint: string }[] = [
   },
   { id: "diff", label: "Diff", icon: "copy", hint: "How files render" },
   { id: "ai", label: "AI", icon: "sparkles", hint: "Preferred CLI" },
-  { id: "startup", label: "Startup", icon: "folder", hint: "Launch behavior" },
+  {
+    id: "notifications",
+    label: "Notifications",
+    icon: "bell",
+    hint: "When the agent pings you",
+  },
 ];
 
 const UI_FONTS: { id: FontPreset; label: string }[] = [
@@ -189,7 +195,7 @@ export function SettingsDialog() {
             ) : null}
             {tab === "diff" ? <DiffSection /> : null}
             {tab === "ai" ? <AiSection /> : null}
-            {tab === "startup" ? <StartupSection /> : null}
+            {tab === "notifications" ? <NotificationsSection /> : null}
           </div>
         </div>
 
@@ -494,51 +500,6 @@ function DiffSection() {
   );
 }
 
-function StartupSection() {
-  const settings = useRepoStore((s) => s.settings);
-  const setAutoOpenLast = useRepoStore((s) => s.setAutoOpenLast);
-  return (
-    <section className={SECTION}>
-      <div className={SECTION_HEAD}>
-        <div className={SECTION_TITLE}>Startup</div>
-        <div className={SECTION_SUB}>
-          How Squint opens when you launch it.
-        </div>
-      </div>
-      {/* Custom switch built entirely from utility classes. The native
-          checkbox is hidden visually via appearance-none + sized into a
-          pill; the thumb is an `::after` pseudo that translates on
-          `:checked`. Same look as the legacy `.settings-toggle` rule. */}
-      <label className="flex items-center justify-between gap-3 cursor-pointer">
-        <div className="flex flex-col gap-0.5 min-w-0">
-          <div className={ROW_LABEL}>Reopen last project</div>
-          <div className={ROW_SUB}>
-            When off, you&apos;ll land on the project picker instead.
-          </div>
-        </div>
-        <input
-          type="checkbox"
-          checked={settings.autoOpenLast}
-          onChange={(e) => setAutoOpenLast(e.target.checked)}
-          className={cn(
-            "appearance-none relative w-8 h-[18px] rounded-full cursor-pointer",
-            "bg-bg-3 border border-bd-2",
-            "transition-[background-color,border-color] duration-[120ms]",
-            // Thumb: 14×14 circle, top-1 left-1 inside the pill,
-            // translates 14px on :checked.
-            "after:content-[''] after:absolute after:top-px after:left-px",
-            "after:w-[14px] after:h-[14px] after:rounded-full after:bg-fg-2",
-            "after:transition-[transform,background-color] after:duration-[140ms]",
-            // Checked state.
-            "checked:bg-accent checked:border-accent",
-            "checked:after:translate-x-[14px] checked:after:bg-white",
-          )}
-        />
-      </label>
-    </section>
-  );
-}
-
 type AiPromptKind = "commit" | "pr" | "summary" | "risk" | "branch";
 
 const AI_PROMPT_FIELDS: {
@@ -669,6 +630,219 @@ function AiSection() {
         </div>
       ))}
     </section>
+  );
+}
+
+// ----- Notifications -------------------------------------------------------
+
+type NotificationEventRow = {
+  key: keyof Settings["notifications"];
+  label: string;
+  hint: string;
+};
+
+const NOTIFICATION_EVENTS: NotificationEventRow[] = [
+  {
+    key: "onInProgress",
+    label: "Agent started",
+    hint: "Card moved from To Do to In Progress.",
+  },
+  {
+    key: "onReview",
+    label: "Ready to review",
+    hint: "Agent finished — succeeded, failed, or aborted.",
+  },
+  {
+    key: "onPrOpened",
+    label: "PR opened",
+    hint: "Approved card pushed and PR created via gh.",
+  },
+];
+
+function NotificationsSection() {
+  const settings = useRepoStore((s) => s.settings);
+  const setPref = useRepoStore((s) => s.setNotificationPref);
+  const pushToast = useRepoStore((s) => s.pushToast);
+  const [testing, setTesting] = useState(false);
+
+  const enabled = settings.notifications.enabled;
+
+  return (
+    <section className={SECTION}>
+      <div className={SECTION_HEAD}>
+        <div className={SECTION_TITLE}>Notifications</div>
+        <div className={SECTION_SUB}>
+          Desktop pings via your OS notification center. macOS will ask for
+          permission the first time one fires. To revoke, open System Settings
+          → Notifications → Squint.
+        </div>
+        {/* Heads-up about dev-mode attribution — when running via
+            `tauri dev`, macOS attributes the prompt to the parent
+            terminal (e.g. "Terminal Notifications"), which throws people
+            off. In the signed build it shows up as "Squint" because the
+            bundle identifier (com.lucasaguiar.squint) is registered. We
+            only mention it inline so it's not a popup the user has to
+            dismiss every session. */}
+        <div
+          className={cn(
+            "text-[10.5px] text-fg-3 mt-1 px-2 py-1.5 rounded-2",
+            "bg-bg-2 border border-bd-2",
+          )}
+        >
+          Running in dev mode? macOS attributes the permission prompt to your
+          terminal app instead of Squint — that&apos;s expected. Notifications
+          show up under the real Squint identity in the released build.
+        </div>
+      </div>
+
+      <NotificationToggleRow
+        label="Enable notifications"
+        hint="Master switch. When off, none of the events below fire."
+        value={enabled}
+        onChange={(v) => setPref("enabled", v)}
+      />
+
+      <div
+        className={cn(
+          "flex flex-col gap-2 pl-1",
+          // Soft-disable the per-event toggles when the master switch is
+          // off — the toggles still react (so the user can pre-configure)
+          // but read as inactive.
+          !enabled && "opacity-50",
+        )}
+      >
+        <div className={cn(SECTION_HEAD, "pt-2")}>
+          <div className={cn(SECTION_TITLE, "text-[12px]")}>Events</div>
+          <div className={SECTION_SUB}>
+            Pick which board transitions actually ping you.
+          </div>
+        </div>
+        {NOTIFICATION_EVENTS.map((evt) => (
+          <NotificationToggleRow
+            key={evt.key}
+            label={evt.label}
+            hint={evt.hint}
+            value={settings.notifications[evt.key]}
+            onChange={(v) => setPref(evt.key, v)}
+          />
+        ))}
+        <NotificationToggleRow
+          label="Sound"
+          hint="Play the system default sound alongside the notification."
+          value={settings.notifications.sound}
+          onChange={(v) => setPref("sound", v)}
+        />
+      </div>
+
+      <div className={cn(ROW, "pt-2")}>
+        <div className="flex flex-col gap-px">
+          <div className={ROW_LABEL}>Test notification</div>
+          <div className={ROW_SUB}>
+            Sends one now so you can verify the OS permission prompt and
+            current toggles.
+          </div>
+        </div>
+        <button
+          type="button"
+          className={cn(BTN_GHOST, "shrink-0")}
+          disabled={!enabled || testing}
+          onClick={async () => {
+            setTesting(true);
+            const result = await sendTestNotification(settings);
+            setTesting(false);
+            switch (result) {
+              case "sent":
+                pushToast(
+                  "Test notification sent. If you don't see it, check System Settings → Notifications.",
+                  "info",
+                );
+                break;
+              case "disabled":
+                pushToast(
+                  "Master switch is off. Enable notifications first.",
+                  "danger",
+                );
+                break;
+              case "permission-denied":
+                pushToast(
+                  "macOS denied permission. Open System Settings → Notifications → Squint to allow.",
+                  "danger",
+                );
+                break;
+              case "permission-pending":
+                pushToast(
+                  "Permission prompt was dismissed without a choice. Click Send test again to retry.",
+                  "danger",
+                );
+                break;
+              case "error":
+                pushToast(
+                  "Could not send notification — the OS notification plugin returned an error.",
+                  "danger",
+                );
+                break;
+            }
+          }}
+        >
+          {testing ? "Sending…" : "Send test"}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Plain switch row reused across the notifications section. We don't
+ * import a generic Toggle component because the rest of the dialog
+ * already uses native checkboxes; matching the look here would mean
+ * either reworking those or introducing a fork. Keeping it self-contained
+ * is simpler.
+ */
+function NotificationToggleRow({
+  label,
+  hint,
+  value,
+  onChange,
+}: {
+  label: string;
+  hint: string;
+  value: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <label
+      className={cn(
+        ROW,
+        "cursor-pointer select-none rounded-2 px-2 -mx-2 py-1",
+        "hover:bg-bg-hover",
+      )}
+    >
+      <div className="flex flex-col gap-px min-w-0">
+        <span className={ROW_LABEL}>{label}</span>
+        <span className={ROW_SUB}>{hint}</span>
+      </div>
+      <span
+        className={cn(
+          "relative inline-flex shrink-0 items-center w-9 h-5 rounded-full",
+          "transition-colors duration-100",
+          value ? "bg-accent" : "bg-bg-3 border border-bd-2",
+        )}
+      >
+        <input
+          type="checkbox"
+          className="sr-only"
+          checked={value}
+          onChange={(e) => onChange(e.target.checked)}
+        />
+        <span
+          className={cn(
+            "absolute w-3.5 h-3.5 rounded-full bg-white shadow",
+            "transition-transform duration-100",
+            value ? "translate-x-[18px]" : "translate-x-[2px]",
+          )}
+        />
+      </span>
+    </label>
   );
 }
 

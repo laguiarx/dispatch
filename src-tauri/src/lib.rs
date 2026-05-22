@@ -1,4 +1,5 @@
 mod commands;
+mod db;
 mod error;
 mod menu;
 
@@ -58,10 +59,19 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
+            use tauri::Manager;
             menu::build_app_menu(app.handle())?;
+            db::init(app.handle())?;
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_millis() as i64)
+                .unwrap_or(0);
+            let db = app.state::<db::Db>();
+            let _ = db::reset_orphan_runs(&db, now);
             Ok(())
         })
         .on_menu_event(|app, event| {
@@ -69,7 +79,6 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::repository::open_repository,
-            commands::repository::git_current_branch,
             commands::git::git_status,
             commands::git::git_file_diff,
             commands::git::git_stage_file,
@@ -86,6 +95,7 @@ pub fn run() {
             commands::git::write_working_file,
             commands::git::git_apply_patch,
             commands::git::git_commit,
+            commands::git::git_commit_all,
             commands::git::git_push,
             commands::git::git_pull,
             commands::git::git_fetch,
@@ -93,6 +103,9 @@ pub fn run() {
             commands::git::git_undo_last_commit,
             commands::git::git_default_branch,
             commands::git::git_remote_branches,
+            commands::git::git_worktree_add,
+            commands::git::git_worktree_remove,
+            commands::git::git_worktree_list,
             commands::git::git_behind_ahead,
             commands::git::git_rebase_onto,
             commands::git::git_merge_into,
@@ -121,7 +134,43 @@ pub fn run() {
             commands::terminal::term_write,
             commands::terminal::term_resize,
             commands::terminal::term_close,
+            commands::agent::agent_start,
+            commands::agent::agent_abort,
+            commands::agent::agent_status,
+            commands::board::board_list_projects,
+            commands::board::board_ensure_project,
+            commands::board::board_update_project,
+            commands::board::board_reorder_projects,
+            commands::board::board_delete_project,
+            commands::board::board_list_cards,
+            commands::board::board_list_all_cards,
+            commands::board::board_create_card,
+            commands::board::board_update_card,
+            commands::board::board_move_card,
+            commands::board::board_delete_card,
+            commands::board::board_clear_card_worktree,
+            commands::board::board_list_runs,
+            commands::board::board_list_run_logs,
+            commands::board::project_script_list,
+            commands::board::project_script_create,
+            commands::board::project_script_update,
+            commands::board::project_script_delete,
+            commands::attachments::attachment_save,
+            commands::attachments::attachment_list,
+            commands::attachments::attachment_delete,
+            commands::attachments::attachment_read_bytes,
+            commands::attachments::attachment_stage_for_run,
+            commands::setup::setup_run_start,
+            commands::detect::project_detect,
+            commands::detect::project_suggest_setup_script,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            // Kill in-flight agent children before the process dies so the
+            // user doesn't end up with orphan `claude` / `codex` runs.
+            if let tauri::RunEvent::ExitRequested { .. } = event {
+                commands::agent::shutdown_all(app);
+            }
+        });
 }

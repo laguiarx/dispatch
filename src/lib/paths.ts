@@ -1,6 +1,5 @@
 import type { FontPreset, MonoPreset, Theme } from "./theme";
 
-const LAST_REPO_KEY = "squint:last-repo";
 const RECENT_REPOS_KEY = "squint:recent-repos";
 const SETTINGS_KEY = "squint:settings";
 
@@ -22,15 +21,27 @@ export type SearchView = "list" | "tree";
 export type Settings = {
   theme: Theme;
   density: Density;
-  autoOpenLast: boolean;
   diffExpansion: DiffExpansion;
   searchView: SearchView;
   /** Global UI zoom controlled by Cmd/Ctrl +/- shortcuts. */
   uiZoom: number;
   leftSidebarVisible: boolean;
+  /** Workspace (project) sidebar shown next to the board. Distinct from
+   * `leftSidebarVisible` which controls the diff-mode file list. */
+  boardSidebarVisible: boolean;
   rightSidebarVisible: boolean;
   leftSidebarWidth: number;
   rightSidebarWidth: number;
+  /**
+   * Where the integrated terminal drawer docks. `"bottom"` is the
+   * traditional VSCode layout (full-width strip under the main column).
+   * `"right"` puts it next to the main column as a side panel — useful
+   * when the user wants a wide diff/board AND a terminal at the same
+   * time on a tall display.
+   */
+  terminalPosition: "bottom" | "right";
+  /** Width of the right-docked terminal in px. Ignored when terminalPosition === "bottom". */
+  terminalRightWidth: number;
   /** ID of the user's preferred external editor (e.g. "vscode", "zed"). */
   preferredEditor: string | null;
   /** ID of the user's preferred AI CLI ("codex" or "claude"). */
@@ -77,19 +88,39 @@ export type Settings = {
    * instead of falling back to `origin/HEAD` every time.
    */
   lastPrBaseByRepo: Record<string, string>;
+  /**
+   * Desktop notification preferences. Channel is currently fixed to the
+   * OS notification center (via tauri-plugin-notification); the per-event
+   * toggles let the user pick which board transitions actually fire one.
+   * `enabled` is the master switch — when off, no notifications are
+   * delivered regardless of the per-event flags.
+   */
+  notifications: {
+    enabled: boolean;
+    /** Card moved from To Do into In Progress (agent picked it up). */
+    onInProgress: boolean;
+    /** Agent finished and the card landed in Review (success, fail, or abort). */
+    onReview: boolean;
+    /** PR was opened — card is now in Done. */
+    onPrOpened: boolean;
+    /** Play a short system sound alongside the notification. */
+    sound: boolean;
+  };
 };
 
 const DEFAULT_SETTINGS: Settings = {
   theme: "dark",
   density: "cozy",
-  autoOpenLast: true,
   diffExpansion: "hunks",
   searchView: "list",
   uiZoom: 1,
   leftSidebarVisible: true,
+  boardSidebarVisible: true,
   rightSidebarVisible: true,
   leftSidebarWidth: 280,
   rightSidebarWidth: 296,
+  terminalPosition: "bottom",
+  terminalRightWidth: 480,
   preferredEditor: null,
   preferredAiCli: "codex",
   aiCliDefaultMigratedToCodex: true,
@@ -107,6 +138,13 @@ const DEFAULT_SETTINGS: Settings = {
     branch: "",
   },
   lastPrBaseByRepo: {},
+  notifications: {
+    enabled: true,
+    onInProgress: true,
+    onReview: true,
+    onPrOpened: true,
+    sound: true,
+  },
 };
 
 /**
@@ -117,25 +155,6 @@ const DEFAULT_SETTINGS: Settings = {
  */
 export const SIDEBAR_MIN_WIDTH = 260;
 export const SIDEBAR_MAX_WIDTH = 600;
-
-// ---------- last repo (auto-open) ----------
-
-export function readLastRepoPath(): string | null {
-  try {
-    return localStorage.getItem(LAST_REPO_KEY);
-  } catch {
-    return null;
-  }
-}
-
-export function writeLastRepoPath(path: string | null): void {
-  try {
-    if (path) localStorage.setItem(LAST_REPO_KEY, path);
-    else localStorage.removeItem(LAST_REPO_KEY);
-  } catch {
-    /* ignore */
-  }
-}
 
 // ---------- recent repos ----------
 
@@ -229,7 +248,6 @@ export function readSettings(): Settings {
       // only affected the file-row height, which felt fragmented. We now
       // force `cozy` everywhere and ignore whatever the legacy prefs say.
       density: "cozy",
-      autoOpenLast: typeof parsed.autoOpenLast === "boolean" ? parsed.autoOpenLast : true,
       diffExpansion: parsed.diffExpansion === "full" ? "full" : "hunks",
       searchView: parsed.searchView === "tree" ? "tree" : "list",
       uiZoom:
@@ -240,12 +258,23 @@ export function readSettings(): Settings {
         typeof parsed.leftSidebarVisible === "boolean"
           ? parsed.leftSidebarVisible
           : true,
+      boardSidebarVisible:
+        typeof parsed.boardSidebarVisible === "boolean"
+          ? parsed.boardSidebarVisible
+          : true,
       rightSidebarVisible:
         typeof parsed.rightSidebarVisible === "boolean"
           ? parsed.rightSidebarVisible
           : true,
       leftSidebarWidth: clampWidth(parsed.leftSidebarWidth, 280),
       rightSidebarWidth: clampWidth(parsed.rightSidebarWidth, 296),
+      terminalPosition:
+        parsed.terminalPosition === "right" ? "right" : "bottom",
+      terminalRightWidth:
+        typeof parsed.terminalRightWidth === "number" &&
+        Number.isFinite(parsed.terminalRightWidth)
+          ? Math.max(280, Math.min(900, parsed.terminalRightWidth))
+          : 480,
       preferredEditor:
         typeof parsed.preferredEditor === "string"
           ? parsed.preferredEditor
@@ -281,6 +310,7 @@ export function readSettings(): Settings {
       customColors: colors as Record<string, string>,
       aiSystemPrompts: readPromptMap(parsed.aiSystemPrompts),
       lastPrBaseByRepo: readStringMap(parsed.lastPrBaseByRepo),
+      notifications: readNotifications(parsed.notifications),
     };
   } catch {
     return { ...DEFAULT_SETTINGS };
@@ -330,6 +360,33 @@ function readPromptMap(
     summary: typeof src.summary === "string" ? src.summary : "",
     risk: typeof src.risk === "string" ? src.risk : "",
     branch: typeof src.branch === "string" ? src.branch : "",
+  };
+}
+
+/**
+ * Read the persisted notifications preferences defensively. Older stored
+ * `Settings` blobs predate this field; fall back to the default (notifications
+ * enabled, all events on, sound on) so users upgrading the app aren't
+ * silently opted out of the feature they didn't know about.
+ */
+function readNotifications(raw: unknown): Settings["notifications"] {
+  const fallback: Settings["notifications"] = {
+    enabled: true,
+    onInProgress: true,
+    onReview: true,
+    onPrOpened: true,
+    sound: true,
+  };
+  if (!raw || typeof raw !== "object") return fallback;
+  const src = raw as Record<string, unknown>;
+  const bool = (v: unknown, d: boolean) =>
+    typeof v === "boolean" ? v : d;
+  return {
+    enabled: bool(src.enabled, fallback.enabled),
+    onInProgress: bool(src.onInProgress, fallback.onInProgress),
+    onReview: bool(src.onReview, fallback.onReview),
+    onPrOpened: bool(src.onPrOpened, fallback.onPrOpened),
+    sound: bool(src.sound, fallback.sound),
   };
 }
 

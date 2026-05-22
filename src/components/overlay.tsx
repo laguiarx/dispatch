@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import type { CSSProperties, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
@@ -15,9 +16,10 @@ type Props = {
  * dim background (but not bubbled-up clicks from inside the card) also
  * closes.
  *
- * Migrated from the `.overlay-back` rule. CommandPalette still references
- * the class directly, so we left a thin compat shim in `index.css` —
- * it'll be removed once CommandPalette is migrated.
+ * Portalled to `document.body` so the scrim always covers the whole
+ * window — otherwise dialogs rendered inside a constrained subtree (e.g.
+ * NewCardDialog inside BoardView) leave the sidebar interactive behind
+ * them.
  */
 export function Overlay({ onClose, children, style, centered }: Props) {
   useEffect(() => {
@@ -28,13 +30,10 @@ export function Overlay({ onClose, children, style, centered }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  return (
+  return createPortal(
     <div
       className={cn(
-        "absolute inset-0 z-50 grid justify-items-center",
-        // Slightly tinted scrim with a soft blur — same look as before.
-        // The light theme uses a different rgba (handled via the shim
-        // rule for now; see comment on `.overlay-back` in index.css).
+        "fixed inset-0 z-50 grid justify-items-center",
         "bg-[rgba(2,3,5,0.55)] backdrop-blur-[4px]",
         centered ? "items-center pt-0" : "items-start pt-[70px]",
       )}
@@ -44,6 +43,7 @@ export function Overlay({ onClose, children, style, centered }: Props) {
       }}
     >
       {children}
-    </div>
+    </div>,
+    document.body,
   );
 }

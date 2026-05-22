@@ -79,6 +79,7 @@ pub fn term_open(
     cols: u16,
     rows: u16,
     cwd: Option<String>,
+    command: Option<String>,
 ) -> AppResult<TermOpenResult> {
     let pty_system = native_pty_system();
     let pair = pty_system
@@ -92,20 +93,23 @@ pub fn term_open(
 
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
     let mut cmd = CommandBuilder::new(&shell);
-    // `-i` (interactive) instead of the previous `-l` (login). The login
-    // flag forced the shell to source ~/.zprofile / ~/.bash_profile every
-    // time the user opened the drawer — on machines with nvm / pyenv /
-    // rbenv / conda-init scripts that can take 300–800ms before the
-    // prompt shows. We don't need it here because:
-    //   1. `fix_macos_path_from_login_shell()` in lib.rs already ran an
-    //      `$SHELL -ilc 'echo $PATH'` once at app startup and copied the
-    //      enriched PATH onto the current process env.
-    //   2. We propagate that PATH explicitly to the child below, so the
-    //      drawer's shell sees `gh`, `claude`, brew bins, etc just like
-    //      Terminal.app would.
-    //   3. ~/.zshrc still runs (interactive shell sources it), so aliases
-    //      and prompt customization still take effect.
-    cmd.arg("-i");
+    // Two modes:
+    //   - `command = None`: interactive shell (default — opens to a prompt).
+    //     `-i` sources ~/.zshrc so aliases/prompt customization apply, but
+    //     not `~/.zprofile` (login files) since `fix_macos_path_from_login_shell`
+    //     already enriched PATH at app boot.
+    //   - `command = Some(cmd)`: run `cmd` and exit (`-ic`). The PTY exits
+    //     when the command finishes, which the frontend uses to await
+    //     completion of setup scripts (e.g. `bun install`).
+    if let Some(cmd_str) = command.as_deref().filter(|s| !s.trim().is_empty()) {
+        cmd.arg("-ic");
+        // Wrap the user script so the shell exits with the script's exit
+        // status. Without the explicit `exit $?`, some shells stay open
+        // after the last command (especially when stdin is a TTY).
+        cmd.arg(format!("{cmd_str}\nexit $?\n"));
+    } else {
+        cmd.arg("-i");
+    }
     if let Some(dir) = cwd.as_ref().filter(|s| !s.is_empty()) {
         cmd.cwd(dir);
     }

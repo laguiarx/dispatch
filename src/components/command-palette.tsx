@@ -28,6 +28,12 @@ type Props = {
   loading?: boolean;
   /** Below this query length, hide results and show a hint. Default 0. */
   minQueryLength?: number;
+  /**
+   * Hide the "switch to files" footer button (and disable the ⌘P chord)
+   * when files-mode doesn't apply — e.g. on the board view, there's no
+   * working tree to search.
+   */
+  allowFilesMode?: boolean;
 };
 
 const MAX_VISIBLE = 200;
@@ -55,6 +61,7 @@ export function CommandPalette({
   commands,
   loading = false,
   minQueryLength = 0,
+  allowFilesMode = true,
 }: Props) {
   const [q, setQ] = useState("");
   const [active, setActive] = useState(0);
@@ -198,16 +205,6 @@ export function CommandPalette({
         )}
       >
         <div className="flex items-center gap-2 px-3.5 py-3 border-b border-bd-1 [&_svg]:text-fg-3">
-          <span
-            className={cn(
-              "font-mono text-[10px] uppercase tracking-[0.08em] whitespace-nowrap",
-              "px-[7px] py-[3px] rounded-full",
-              "bg-accent-softer text-accent-hi",
-              "border border-[color-mix(in_oklab,var(--accent)_30%,transparent)]",
-            )}
-          >
-            {mode === "files" ? "Files" : "Commands"}
-          </span>
           {I.search}
           <input
             ref={inputRef}
@@ -365,32 +362,24 @@ export function CommandPalette({
             <span className={CHIP}>esc</span> close
           </span>
           <span className="flex-1" />
-          <button
-            className={cn(
-              "inline-flex items-center gap-0.5 text-[11px] text-fg-2",
-              "px-1.5 py-0.5 rounded hover:bg-bg-hover hover:text-fg-0",
-            )}
-            onClick={() =>
-              onSwitchMode(mode === "files" ? "commands" : "files")
-            }
-            title={
-              mode === "files"
-                ? "Switch to commands palette (⌘⇧P)"
-                : "Switch to file picker (⌘P)"
-            }
-          >
-            {mode === "files" ? (
-              <>
-                <Kbd>⌘⇧P</Kbd>
-                <span style={{ marginLeft: 6 }}>commands</span>
-              </>
-            ) : (
-              <>
-                <Kbd>⌘P</Kbd>
-                <span style={{ marginLeft: 6 }}>files</span>
-              </>
-            )}
-          </button>
+          {allowFilesMode ? (
+            <button
+              className={cn(
+                "inline-flex items-center gap-0.5 text-[11px] text-fg-2",
+                "px-1.5 py-0.5 rounded hover:bg-bg-hover hover:text-fg-0",
+              )}
+              onClick={() =>
+                onSwitchMode(mode === "files" ? "commands" : "files")
+              }
+              title={
+                mode === "files"
+                  ? "Switch to commands palette (⌘⇧P)"
+                  : "Switch to file picker (⌘P)"
+              }
+            >
+              <Kbd>{mode === "files" ? "⌘⇧P" : "⌘P"}</Kbd>
+            </button>
+          ) : null}
           <span>
             {showResults
               ? `${filtered.length.toLocaleString()} result${filtered.length === 1 ? "" : "s"}`

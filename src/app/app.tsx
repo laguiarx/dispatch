@@ -1,13 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 import { TopBar } from "@/components/top-bar";
 import { Sidebar } from "@/components/sidebar";
 import { DiffPane } from "@/components/diff-pane";
 import { TabStrip } from "@/components/tab-strip";
+import { BoardView } from "@/components/board/board-view";
+import { ProjectSidebar } from "@/components/board/project-sidebar";
+import { useBoardStore } from "@/features/board/board.store";
 import { AiOutputDialog } from "@/components/ai-output-dialog";
 import { PrBranchChoiceDialog } from "@/components/pr-branch-choice-dialog";
 import { PrFlowDialog } from "@/components/pr-flow-dialog";
 import { ReplaceOverlay } from "@/components/replace-overlay";
-import { Spinner } from "@/components/spinner";
 import { TerminalDrawer } from "@/components/terminal-drawer";
 import {
   SidebarResizeHandle,
@@ -20,13 +22,9 @@ import { ShortcutsDialog } from "@/components/shortcuts-dialog";
 import { StashPromptDialog } from "@/components/stash-prompt-dialog";
 import { OnboardingModal } from "@/components/onboarding-modal";
 import { Toast } from "@/components/toast";
-import { NoRepoState } from "@/components/no-repo-state";
 import { I } from "@/components/icons";
 import { cn } from "@/lib/utils";
-import {
-  getLastRepoPath,
-  useRepoStore,
-} from "@/features/repository/repository.store";
+import { useRepoStore } from "@/features/repository/repository.store";
 import {
   applyCustomColors,
   applyDensity,
@@ -38,17 +36,21 @@ import {
 import { isTauri } from "@/lib/tauri";
 import { useKeyboardShortcuts } from "./keyboard";
 import { useNativeMenu } from "./menu-events";
-import { buildCommands, buildFileCommands } from "./commands";
+import {
+  buildBoardCommands,
+  buildCommands,
+  buildFileCommands,
+} from "./commands";
 
 export function App() {
   const repository = useRepoStore((s) => s.repository);
+  const reviewedCardId = useRepoStore((s) => s.reviewedCardId);
   const errorMessage = useRepoStore((s) => s.errorMessage);
   const setError = useRepoStore((s) => s.setError);
-  const openRepositoryFromPath = useRepoStore(
-    (s) => s.openRepositoryFromPath,
-  );
-  const openRepositoryPicker = useRepoStore((s) => s.openRepositoryPicker);
   const settings = useRepoStore((s) => s.settings);
+
+  const loadProjects = useBoardStore((s) => s.loadProjects);
+  const projects = useBoardStore((s) => s.projects);
 
   // confirm dialog state from store
   const confirm = useRepoStore((s) => s.confirm);
@@ -121,71 +123,17 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Decide synchronously whether we'll try to auto-open the last repo so
-  // the very first render shows a splash (not the project picker that
-  // would flash away once auto-open kicks in). `bootstrapping` flips to
-  // false either after the open completes / fails, or immediately when
-  // there's nothing to open.
-  const [bootstrapping, setBootstrapping] = useState<boolean>(() => {
-    if (!settings.autoOpenLast) return false;
-    const last = getLastRepoPath();
-    return Boolean(last && isTauri());
-  });
+  // The legacy "auto-open last repo on launch" path is gone now that the
+  // board is the primary view. Repos surface as projects in the sidebar;
+  // the diff workflow only re-enters via Review mode, which sets the
+  // repository explicitly via `enterReviewMode`.
 
-  // Auto-load last repo on first run, if the preference is on.
+  // Load the project list from SQLite once at boot. The board is the
+  // primary view of the app, so this needs to happen before any UI cares
+  // about activeProjectId / cards.
   useEffect(() => {
-    if (!settings.autoOpenLast) {
-      setBootstrapping(false);
-      return;
-    }
-    const last = getLastRepoPath();
-    if (last && isTauri()) {
-      openRepositoryFromPath(last)
-        .catch(() => {
-          /* error already in store */
-        })
-        .finally(() => setBootstrapping(false));
-    } else {
-      setBootstrapping(false);
-    }
-    // Only on mount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Recovery path for the case where `repository` drops to null AFTER
-  // mount — primarily happens during dev when Vite HMR resets the
-  // Zustand store mid-session (e.g. user is dogfooding the app on its
-  // own repo, switches branches, source files change, HMR fires, store
-  // is reborn empty). Without this, the user would land on the
-  // NoRepoState picker and have to manually reopen.
-  //
-  // Guarded by a ref so a failing `openRepositoryFromPath` doesn't
-  // ping-pong us forever — we try ONCE per "lost the repo" event, and
-  // the flag is reset when the repository comes back.
-  const recoveryAttempted = useRef(false);
-  useEffect(() => {
-    if (repository) {
-      recoveryAttempted.current = false;
-      return;
-    }
-    if (bootstrapping) return;
-    if (recoveryAttempted.current) return;
-    if (!settings.autoOpenLast || !isTauri()) return;
-    const last = getLastRepoPath();
-    if (!last) return;
-    recoveryAttempted.current = true;
-    setBootstrapping(true);
-    openRepositoryFromPath(last)
-      .catch(() => {
-        /* keep the user on NoRepoState — error is in the store */
-      })
-      .finally(() => setBootstrapping(false));
-  }, [
-    repository,
-    bootstrapping,
-    settings.autoOpenLast,
-    openRepositoryFromPath,
-  ]);
+    void loadProjects();
+  }, [loadProjects]);
 
   // Auto-sync with the remote whenever the window regains focus (the user
   // came back from the browser / terminal / GitHub / etc). The store
@@ -296,8 +244,51 @@ export function App() {
     });
   }, [paletteMode, repoFiles, files, selectFile, setSidebarTab]);
 
+  // Board-mode palette has a much smaller surface than the diff palette —
+  // file-staging / AI / diff-view actions don't apply when the user is
+  // looking at the kanban.
+  const setActiveProject = useBoardStore((s) => s.setActiveProject);
+  const addProjectFromPicker = useBoardStore((s) => s.addProjectFromPicker);
+  const setNewCardOpen = useBoardStore((s) => s.setNewCardOpen);
+  const projectsForPalette = useBoardStore((s) => s.projects);
+  const activeProjectId = useBoardStore((s) => s.activeProjectId);
+  const boardCommands = useMemo(
+    () =>
+      buildBoardCommands({
+        projects: projectsForPalette.map((p) => ({ id: p.id, name: p.name })),
+        activeProjectId,
+        setActiveProject,
+        addProjectFromPicker,
+        setNewCardOpen,
+        setSettingsOpen,
+        openShortcuts: () => setShortcutsOpen(true),
+        setTheme,
+        theme: settings.theme,
+        pushToast,
+      }),
+    [
+      projectsForPalette,
+      activeProjectId,
+      setActiveProject,
+      addProjectFromPicker,
+      setNewCardOpen,
+      setSettingsOpen,
+      setShortcutsOpen,
+      setTheme,
+      settings.theme,
+      pushToast,
+    ],
+  );
+
+  // The board view (no review) gets the board palette; Review mode gets
+  // the legacy diff palette since the diff workflow is back in scope.
+  const inBoardMode = !reviewedCardId;
   const paletteCommands =
-    paletteMode === "files" ? fileCommands : actionCommands;
+    paletteMode === "files"
+      ? fileCommands
+      : inBoardMode
+        ? boardCommands
+        : actionCommands;
 
   return (
     <div
@@ -309,70 +300,58 @@ export function App() {
     >
       <TopBar />
 
-      {repository ? (
-        <div
-          // Three-column workspace grid (left sidebar · main · optional
-          // right). Width comes from the inline `gridTemplateColumns`
-          // style so the sidebar can collapse to zero when hidden.
-          // `relative` anchors the sidebar resize handle, which lives in
-          // the inter-column gap rather than inside the sidebar bubble
-          // (so the user can grab the visible space between the islands).
-          className="flex-1 grid min-h-0 overflow-hidden gap-1 relative"
-          style={{
-            gridTemplateColumns: [
-              settings.leftSidebarVisible
-                ? `${settings.leftSidebarWidth}px`
-                : null,
-              "1fr",
-            ]
-              .filter(Boolean)
-              .join(" "),
-          }}
-        >
-          {settings.leftSidebarVisible ? <Sidebar /> : null}
-          {/* Right column of the workspace grid: main-col on top, terminal
-              drawer beneath it. Keeping them in the same flex-column means
-              the terminal opening only shortens the diff pane — the
-              sidebar (left column) keeps its full workspace height.
-              `relative` anchors the terminal resize handle, which sits in
-              the inter-row gap between main and terminal. */}
-          <div className="flex flex-col min-w-0 min-h-0 gap-1 relative">
-            <div
-              // The "main column" floating card — same visual treatment
-              // as the sidebars / terminal drawer so the three workspace
-              // panes read as one consistent set of bubbles.
-              className={cn(
-                "flex flex-col flex-1 min-w-0 min-h-0 overflow-hidden",
-                "bg-[color-mix(in_oklab,var(--bg-0)_92%,transparent)]",
-                "border border-bd-2 rounded-[10px]",
-                "shadow-[0_12px_32px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.25)]",
-                "backdrop-blur-card backdrop-saturate-[140%]",
-              )}
-            >
-              <TabStrip />
-              <DiffPane />
-            </div>
-            <TerminalDrawer />
-            <TerminalResizeHandle />
+      {reviewedCardId && repository ? (
+        // Review mode: scope-swap to the card's worktree and show the
+        // legacy diff workflow (sidebar with file list, tab strip, diff
+        // pane, terminal). Banner up top to get back to the board.
+        <WorkspaceShell sidebar={<Sidebar />}>
+          <div
+            className={cn(
+              "flex flex-col flex-1 min-w-0 min-h-0 overflow-hidden",
+              "bg-[color-mix(in_oklab,var(--bg-0)_92%,transparent)]",
+              "border border-bd-2 rounded-[10px]",
+              "shadow-[0_12px_32px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.25)]",
+              "backdrop-blur-card backdrop-saturate-[140%]",
+            )}
+          >
+            {/* "Back to board" lives in the unified sidebar header now. */}
+            <TabStrip />
+            <DiffPane />
           </div>
-          <SidebarResizeHandle />
-          {/* Right sidebar removed — per-file actions live inline on each
-              FileRow in the left sidebar, Git/AI lives in the topbar, and
-              AI output opens as a centered modal (`AiOutputDialog`). */}
-        </div>
-      ) : bootstrapping ? (
-        <div
-          className="flex-1 flex flex-col items-center justify-center gap-3.5 bg-bg-0 text-center"
-          role="status"
-          aria-live="polite"
-        >
-          <Spinner className="w-[22px] h-[22px]" />
-          <span className="text-[12px] text-fg-2">Opening project…</span>
-        </div>
+        </WorkspaceShell>
       ) : (
-        <div style={{ flex: 1, minHeight: 0 }}>
-          <NoRepoState onOpen={openRepositoryPicker} />
-        </div>
+        // Default: agent-first board. Layout shape matches Review mode
+        // (resizable sidebar via SidebarResizeHandle, ⌘B toggles
+        // visibility) so toggling modes doesn't shift the workspace.
+        <WorkspaceShell sidebar={<ProjectSidebar />}>
+          <div
+            className={cn(
+              "flex flex-col flex-1 min-w-0 min-h-0 overflow-hidden",
+              "bg-[color-mix(in_oklab,var(--bg-0)_92%,transparent)]",
+              "border border-bd-2 rounded-[10px]",
+              "shadow-[0_12px_32px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.25)]",
+              "backdrop-blur-card backdrop-saturate-[140%]",
+            )}
+          >
+            {projects.length === 0 ? (
+              <div className="flex-1 grid place-items-center text-center text-[12px] text-fg-2 p-6">
+                <div className="flex flex-col gap-2 max-w-[320px]">
+                  <div className="text-[14px] font-medium text-fg-0">
+                    No projects yet
+                  </div>
+                  <div>
+                    Use the <span className="text-fg-1">+</span> button in
+                    the Workspace sidebar to add a Git repository. Each
+                    project you add becomes a kanban board scoped to that
+                    repo.
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <BoardView />
+            )}
+          </div>
+        </WorkspaceShell>
       )}
 
       {errorMessage ? (
@@ -422,6 +401,9 @@ export function App() {
         commands={paletteCommands}
         loading={paletteMode === "files" && repoFilesLoading}
         minQueryLength={paletteMode === "files" ? 1 : 0}
+        // Files mode only applies to the diff workflow — in board mode
+        // there's no working tree to index, so the ⌘P chord is hidden.
+        allowFilesMode={!inBoardMode}
       />
       <ConfirmDialog
         open={!!confirm}
@@ -440,6 +422,87 @@ export function App() {
       <PrBranchChoiceDialog />
       <PrFlowDialog />
       <Toast messages={toasts} />
+    </div>
+  );
+}
+
+/**
+ * Workspace shell shared by Review mode (diff workflow) and Board mode.
+ * Owns the sidebar + main column + terminal positioning so the two
+ * top-level branches in `App` don't drift apart.
+ *
+ * Two terminal docks are supported, switched via
+ * `settings.terminalPosition`:
+ *   - "bottom": traditional drawer beneath the main pane, full width.
+ *     The grid is `[sidebar | main column]` and the main column is
+ *     `flex-col` with `[content | TerminalDrawer]`.
+ *   - "right": the terminal becomes a side panel between the main pane
+ *     and the right edge. The grid becomes
+ *     `[sidebar | main column | TerminalDrawer]` and the main column is
+ *     just the content (no terminal below).
+ * In either mode the terminal can be hidden via the existing
+ * `terminalOpen` flag (⌘`); the drawer renders `display: none` so its
+ * PTY scrollback stays warm across toggles.
+ */
+function WorkspaceShell({
+  children,
+  sidebar,
+}: {
+  children: ReactNode;
+  sidebar: ReactNode;
+}) {
+  const leftSidebarVisible = useRepoStore((s) => s.settings.leftSidebarVisible);
+  const leftSidebarWidth = useRepoStore((s) => s.settings.leftSidebarWidth);
+  const terminalOpen = useRepoStore((s) => s.terminalOpen);
+  const terminalTabsLen = useRepoStore((s) => s.terminalTabs.length);
+  const terminalPosition = useRepoStore((s) => s.settings.terminalPosition);
+  const terminalRightWidth = useRepoStore(
+    (s) => s.settings.terminalRightWidth,
+  );
+  const terminalShowingRight =
+    terminalPosition === "right" && terminalOpen && terminalTabsLen > 0;
+
+  // Grid columns: sidebar (optional) → main pane → terminal (only when
+  // right-docked AND visible). Building the string from a flat array
+  // keeps the conditional intent clear and avoids tracking grid line
+  // names. `1fr` for the main pane absorbs whatever's left.
+  const gridTemplateColumns = [
+    leftSidebarVisible ? `${leftSidebarWidth}px` : null,
+    "1fr",
+    terminalShowingRight ? `${terminalRightWidth}px` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return (
+    <div
+      className="flex-1 grid min-h-0 overflow-hidden gap-1 relative"
+      style={{ gridTemplateColumns }}
+    >
+      {leftSidebarVisible ? sidebar : null}
+      {/* Main column always renders its content. When terminal is
+          docked at the bottom, it stacks below `children` with its
+          horizontal resize handle. When docked at the right, the
+          terminal is rendered as a sibling grid cell instead. */}
+      <div className="flex flex-col min-w-0 min-h-0 gap-1 relative">
+        {children}
+        {terminalPosition === "bottom" ? (
+          <>
+            <TerminalDrawer />
+            <TerminalResizeHandle />
+          </>
+        ) : null}
+      </div>
+      {terminalPosition === "right" ? (
+        <>
+          <TerminalDrawer />
+          {/* Handle lives in the grid gap between main column and
+              terminal — its absolute positioning anchors off the right
+              edge using `terminalRightWidth`. */}
+          <TerminalResizeHandle />
+        </>
+      ) : null}
+      <SidebarResizeHandle />
     </div>
   );
 }
