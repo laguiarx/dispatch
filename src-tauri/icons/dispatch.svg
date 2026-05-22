@@ -1,32 +1,130 @@
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Dispatch app icon">
-  <!--
-    macOS app icon. Canvas 1024², rounded square inset to 960 × 960
-    (32 px margin per side, ~93.75 % canvas fill). Matches the visual
-    size of Slack / Linear / Cursor in the Dock; the previous 920²
-    revision still read as ~5 % smaller than those neighbours.
-
-    Corner radius 216 derived from Apple Big Sur ratio (185.4 / 824)
-    scaled to the 960 squircle (960 × 0.225 = 216).
-
-    Mark coordinates: original 1024-canvas drawing scaled 0.9375× and
-    offset by 32:
-      x' = round(x_old · 0.9375) + 32
-      y' = round(y_old · 0.9375) + 32
-  -->
   <defs>
-    <clipPath id="dispatch-icon-mask">
-      <rect x="32" y="32" width="960" height="960" rx="216" ry="216" />
-    </clipPath>
+    <linearGradient id="bg" x1="170" y1="104" x2="850" y2="940" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#24262D"/>
+      <stop offset="0.55" stop-color="#111218"/>
+      <stop offset="1" stop-color="#050609"/>
+    </linearGradient>
+
+    <radialGradient id="bgBloom" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(566 393) rotate(90) scale(430 520)">
+      <stop offset="0" stop-color="#3341FF" stop-opacity="0.13"/>
+      <stop offset="0.45" stop-color="#18205C" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+
+    <linearGradient id="route" x1="325" y1="512" x2="710" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4E5BFF"/>
+      <stop offset="0.58" stop-color="#7159FF"/>
+      <stop offset="1" stop-color="#55BFFF"/>
+    </linearGradient>
+
+    <linearGradient id="node" x1="260" y1="430" x2="384" y2="596" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7B8CFF"/>
+      <stop offset="0.52" stop-color="#5B62FF"/>
+      <stop offset="1" stop-color="#4632EE"/>
+    </linearGradient>
+
+    <linearGradient id="card" x1="690" y1="270" x2="790" y2="740" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4B4C56"/>
+      <stop offset="1" stop-color="#171820"/>
+    </linearGradient>
+
+    <linearGradient id="done" x1="690" y1="520" x2="786" y2="616" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#72F18A"/>
+      <stop offset="1" stop-color="#20BE5D"/>
+    </linearGradient>
+
+    <linearGradient id="priority" x1="690" y1="640" x2="786" y2="736" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFD15F"/>
+      <stop offset="1" stop-color="#F3A500"/>
+    </linearGradient>
+
+    <filter id="iconShadow" x="0" y="0" width="1024" height="1024" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="26" stdDeviation="32" flood-color="#000000" flood-opacity="0.42"/>
+    </filter>
+
+    <filter id="routeGlow" x="0" y="0" width="1024" height="1024" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="7" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.32  0 0 0 0 0.36  0 0 0 0 1  0 0 0 0.72 0" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="nodeGlow" x="0" y="0" width="1024" height="1024" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="0" stdDeviation="14" flood-color="#5963FF" flood-opacity="0.48"/>
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#000000" flood-opacity="0.45"/>
+    </filter>
+
+    <filter id="cardShadow" x="0" y="0" width="1024" height="1024" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#000000" flood-opacity="0.42"/>
+    </filter>
+
+    <filter id="greenGlow" x="0" y="0" width="1024" height="1024" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="0" stdDeviation="12" flood-color="#39E975" flood-opacity="0.48"/>
+      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+
+    <filter id="amberGlow" x="0" y="0" width="1024" height="1024" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="0" stdDeviation="10" flood-color="#FFB72E" flood-opacity="0.38"/>
+      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
   </defs>
 
-  <g clip-path="url(#dispatch-icon-mask)">
-    <rect x="32" y="32" width="960" height="960" fill="#0B0B0F" />
+  <!--
+    macOS app icon. Apple documents the iOS/iPadOS/macOS layout as a
+    1024x1024 square, and the generated .icns contains the required
+    16, 32, 128, 256, 512 and 1024 px layers. The visible base is kept
+    at 960x960 with 32 px margins so the Dock size matches the prior
+    Dispatch calibration instead of the smaller raw 868x868 draft.
+  -->
+  <g filter="url(#iconShadow)">
+    <rect x="32" y="32" width="960" height="960" rx="216" fill="url(#bg)"/>
+    <rect x="32" y="32" width="960" height="960" rx="216" fill="url(#bgBloom)"/>
+    <rect x="51" y="51" width="922" height="922" rx="207" stroke="#FFFFFF" stroke-opacity="0.08" stroke-width="2"/>
+    <rect x="70" y="70" width="884" height="884" rx="198" stroke="#4A4D59" stroke-opacity="0.38" stroke-width="2"/>
+  </g>
 
-    <!-- Geometric dispatch mark: two filled apertures separated by a
-         negative-space slit. -->
-    <g fill="#5B5BD6" shape-rendering="geometricPrecision">
-      <path d="M250 390L512 489L774 390V493H250V390Z" />
-      <path d="M250 643L512 544L774 643V538H250V643Z" />
+  <g transform="translate(-54.267 -54.267) scale(1.105991)">
+    <!-- Clean routed paths. No background legs; every route lands on a square center. -->
+    <g filter="url(#routeGlow)">
+      <path d="M322 512 C425 512 456 324 684 324" stroke="url(#route)" stroke-width="24" stroke-linecap="round"/>
+      <path d="M322 512 C430 512 480 444 684 444" stroke="url(#route)" stroke-width="24" stroke-linecap="round"/>
+      <path d="M322 512 C430 512 480 564 684 564" stroke="url(#route)" stroke-width="24" stroke-linecap="round"/>
+      <path d="M322 512 C425 512 456 684 684 684" stroke="url(#route)" stroke-width="24" stroke-linecap="round"/>
     </g>
+
+    <!-- Central dispatch node -->
+    <g filter="url(#nodeGlow)">
+      <circle cx="322" cy="512" r="80" fill="#0E1017"/>
+      <circle cx="322" cy="512" r="68" fill="url(#node)"/>
+      <circle cx="322" cy="512" r="67" stroke="#B9C0FF" stroke-opacity="0.42" stroke-width="2"/>
+      <circle cx="322" cy="512" r="31" fill="#FFFFFF" fill-opacity="0.08"/>
+      <path d="M287 470 C309 447 353 448 374 471" stroke="#FFFFFF" stroke-opacity="0.17" stroke-width="8" stroke-linecap="round"/>
+    </g>
+
+    <!-- Endpoint task blocks -->
+    <g filter="url(#cardShadow)">
+      <rect x="684" y="276" width="96" height="96" rx="25" fill="url(#card)"/>
+      <rect x="684" y="276" width="96" height="96" rx="25" stroke="#8C8E98" stroke-opacity="0.40" stroke-width="2"/>
+
+      <rect x="684" y="396" width="96" height="96" rx="25" fill="url(#card)"/>
+      <rect x="684" y="396" width="96" height="96" rx="25" stroke="#8C8E98" stroke-opacity="0.40" stroke-width="2"/>
+
+      <rect x="684" y="636" width="96" height="96" rx="25" fill="url(#card)"/>
+      <rect x="684" y="636" width="96" height="96" rx="25" stroke="#8C8E98" stroke-opacity="0.40" stroke-width="2"/>
+    </g>
+
+    <g filter="url(#greenGlow)">
+      <rect x="684" y="516" width="96" height="96" rx="25" fill="url(#done)"/>
+      <rect x="684" y="516" width="96" height="96" rx="25" stroke="#BEFFCB" stroke-opacity="0.46" stroke-width="2"/>
+    </g>
+
+    <!-- small port dots drawn last so the alignment is explicit -->
+    <circle cx="684" cy="324" r="7" fill="#776DFF"/>
+    <circle cx="684" cy="444" r="7" fill="#776DFF"/>
+    <circle cx="684" cy="564" r="7" fill="#66C9FF"/>
+    <circle cx="684" cy="684" r="7" fill="#776DFF"/>
   </g>
 </svg>
