@@ -7,6 +7,7 @@ import type {
 import { buildTree, type TreeNode } from "@/lib/tree";
 import { cn } from "@/lib/utils";
 import { I } from "./icons";
+import { Button } from "@/components/ui/button";
 
 type FileGroup = { filePath: string; items: SearchResult[] };
 
@@ -192,13 +193,13 @@ export function SearchPanel() {
             spellCheck={false}
           />
           {query ? (
-            <button
+            <Button variant="unstyled"
               className="grid place-items-center p-0.5 bg-transparent border-0 text-fg-3 hover:text-fg-0"
               onClick={() => setSearchQuery("")}
               title="Clear"
             >
               {I.x}
-            </button>
+            </Button>
           ) : null}
         </div>
         <div className={FLAGS_ROW}>
@@ -222,21 +223,21 @@ export function SearchPanel() {
             disabled={!selectedFilePath}
           />
           <span className="flex-1" />
-          <button
+          <Button variant="unstyled"
             className={cn(FLAG_BASE, caseSensitive && FLAG_ON)}
             onClick={() => setSearchCaseSensitive(!caseSensitive)}
             title="Match case"
           >
             Aa
-          </button>
-          <button
+          </Button>
+          <Button variant="unstyled"
             className={cn(FLAG_BASE, regex && FLAG_ON)}
             onClick={() => setSearchRegex(!regex)}
             title="Regex"
           >
             .*
-          </button>
-          <button
+          </Button>
+          <Button variant="unstyled"
             className={cn(
               FLAG_BASE,
               (filtersOpen || include || exclude) && FLAG_ON,
@@ -246,7 +247,7 @@ export function SearchPanel() {
             aria-label="Toggle search details"
           >
             {I.ellipsis}
-          </button>
+          </Button>
         </div>
         {filtersOpen ? (
           <div className={FILTERS}>
@@ -290,22 +291,22 @@ export function SearchPanel() {
           </span>
           <span className="flex-1" />
           <div className={VIEW_TOGGLE}>
-            <button
+            <Button variant="unstyled"
               className={cn(VIEW_BTN_BASE, searchView === "list" && VIEW_BTN_ACTIVE)}
               onClick={() => setSearchView("list")}
               title="View as list"
               type="button"
             >
               {I.viewList}
-            </button>
-            <button
+            </Button>
+            <Button variant="unstyled"
               className={cn(VIEW_BTN_BASE, searchView === "tree" && VIEW_BTN_ACTIVE)}
               onClick={() => setSearchView("tree")}
               title="View as tree"
               type="button"
             >
               {I.viewTree}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -366,7 +367,7 @@ function ListView({
         const open = !collapsed.has(g.filePath);
         return (
           <div key={g.filePath} className={SR_GROUP}>
-            <button
+            <Button variant="unstyled"
               className={SR_GROUP_HEAD}
               onClick={() => onToggle(g.filePath)}
               title={g.filePath}
@@ -376,7 +377,7 @@ function ListView({
               </span>
               <span className={SR_GROUP_PATH}>{g.filePath}</span>
               <span className={SR_GROUP_COUNT}>{g.items.length}</span>
-            </button>
+            </Button>
             {open ? (
               <div className={SR_GROUP_BODY}>
                 {g.items.map((h, i) => (
@@ -444,7 +445,7 @@ function TreeView({
       const open = !collapsed.has(node.path);
       const count = folderCounts.get(node.path) ?? 0;
       const out: React.ReactNode[] = [
-        <button
+        <Button variant="unstyled"
           key={`dir:${node.path}`}
           className={TREE_ROW}
           style={{ paddingLeft: 4 + depth * 6 }}
@@ -461,7 +462,7 @@ function TreeView({
           </span>
           <span className={cn(TREE_NAME, TREE_NAME_DIR)}>{node.name}</span>
           <span className={SR_GROUP_COUNT}>{count}</span>
-        </button>,
+        </Button>,
       ];
       if (open) {
         node.children?.forEach((c) => {
@@ -475,7 +476,7 @@ function TreeView({
     const hits = byPath.get(node.path) ?? [];
     const open = !collapsed.has(node.path);
     const out: React.ReactNode[] = [
-      <button
+      <Button variant="unstyled"
         key={`file:${node.path}`}
         className={TREE_ROW}
         style={{ paddingLeft: 4 + depth * 6 }}
@@ -488,7 +489,7 @@ function TreeView({
         <span className={cn(TREE_ICON_BASE, "text-fg-3")}>{I.fileSmall}</span>
         <span className={TREE_NAME}>{node.name}</span>
         <span className={SR_GROUP_COUNT}>{hits.length}</span>
-      </button>,
+      </Button>,
     ];
     if (open) {
       hits.forEach((h, i) => {
@@ -530,7 +531,7 @@ function HitRow({
 }) {
   const padLeft = depth != null ? 4 + depth * 6 : undefined;
   return (
-    <button
+    <Button variant="unstyled"
       className={SR_HIT}
       onClick={() => onJump(hit)}
       style={padLeft != null ? { paddingLeft: padLeft } : undefined}
@@ -540,7 +541,7 @@ function HitRow({
       <span className={SR_LINE_TEXT}>
         {renderHitLine(hit.lineText, query, caseSensitive, regex)}
       </span>
-    </button>
+    </Button>
   );
 }
 
@@ -558,7 +559,7 @@ function ScopeBtn({
   disabled?: boolean;
 }) {
   return (
-    <button
+    <Button variant="unstyled"
       type="button"
       disabled={disabled}
       onClick={() => onClick(value)}
@@ -570,7 +571,7 @@ function ScopeBtn({
       title={`Scope: ${label}`}
     >
       {label}
-    </button>
+    </Button>
   );
 }
 

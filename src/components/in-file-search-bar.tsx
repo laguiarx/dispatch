@@ -1,6 +1,7 @@
 import { forwardRef, useImperativeHandle, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { I } from "./icons";
+import { Button } from "@/components/ui/button";
 
 type Props = {
   query: string;
@@ -98,27 +99,27 @@ export const InFileSearchBar = forwardRef<InFileSearchBarHandle, Props>(
           autoComplete="off"
           spellCheck={false}
         />
-        <button
+        <Button variant="unstyled"
           className={cn(FLAG_BASE, props.caseSensitive && FLAG_ON)}
           onClick={props.onToggleCase}
           title="Match case"
           type="button"
         >
           Aa
-        </button>
-        <button
+        </Button>
+        <Button variant="unstyled"
           className={cn(FLAG_BASE, props.regex && FLAG_ON)}
           onClick={props.onToggleRegex}
           title="Regex"
           type="button"
         >
           .*
-        </button>
+        </Button>
         <span className="font-mono text-fg-2 text-[11px] px-1.5 whitespace-nowrap min-w-[70px] text-right">
           {label}
         </span>
         <div className="inline-flex gap-0.5">
-          <button
+          <Button variant="unstyled"
             className={ICON_BTN}
             onClick={props.onPrev}
             title="Previous match (⇧↵)"
@@ -126,8 +127,8 @@ export const InFileSearchBar = forwardRef<InFileSearchBarHandle, Props>(
             disabled={props.total === 0}
           >
             ↑
-          </button>
-          <button
+          </Button>
+          <Button variant="unstyled"
             className={ICON_BTN}
             onClick={props.onNext}
             title="Next match (↵)"
@@ -135,16 +136,16 @@ export const InFileSearchBar = forwardRef<InFileSearchBarHandle, Props>(
             disabled={props.total === 0}
           >
             ↓
-          </button>
+          </Button>
         </div>
-        <button
+        <Button variant="unstyled"
           className={ICON_BTN}
           onClick={props.onClose}
           title="Close (Esc)"
           type="button"
         >
           {I.x}
-        </button>
+        </Button>
       </div>
     );
   },

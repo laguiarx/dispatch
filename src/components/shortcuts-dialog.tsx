@@ -2,6 +2,7 @@ import { useRepoStore } from "@/features/repository/repository.store";
 import { I } from "./icons";
 import { Overlay } from "./overlay";
 import { CHIP, splitShortcut } from "./kbd";
+import { Button } from "@/components/ui/button";
 
 type Shortcut = {
   label: string;
@@ -110,14 +111,14 @@ export function ShortcutsDialog() {
             Keyboard shortcuts
           </span>
           <span className="flex-1" />
-          <button
+          <Button variant="unstyled"
             className="w-[22px] h-[22px] grid place-items-center rounded-[4px] text-fg-3 bg-transparent border-0 cursor-pointer hover:bg-bg-hover hover:text-fg-0"
             onClick={() => close(false)}
             title="Close"
             aria-label="Close shortcuts"
           >
             {I.x}
-          </button>
+          </Button>
         </div>
         <div className="overflow-y-auto">
           {GROUPS.map((g, gi) => (

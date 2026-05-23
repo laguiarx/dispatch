@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { BTN_GHOST } from "@/lib/btn";
+import { Button } from "@/components/ui/button";
 import { useRepoStore } from "@/features/repository/repository.store";
 import type { AiKind } from "@/features/ai/ai.types";
 import { cn } from "@/lib/utils";
@@ -87,14 +87,14 @@ export function AiOutputDialog() {
             AI · {currentLabel}
           </span>
           <span className="flex-1" />
-          <button
+          <Button variant="unstyled"
             className="grid place-items-center w-5 h-5 rounded text-fg-3 hover:bg-bg-hover hover:text-fg-0"
             onClick={close}
             title="Close (Esc)"
             type="button"
           >
             {I.x}
-          </button>
+          </Button>
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-3.5 pb-3 flex flex-col gap-2.5">
@@ -118,8 +118,9 @@ export function AiOutputDialog() {
                 {aiError}
               </div>
               <div className="flex gap-1.5 mt-2.5">
-                <button
-                  className={BTN_GHOST}
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => {
                     close();
                     setSettingsOpen(true);
@@ -127,14 +128,15 @@ export function AiOutputDialog() {
                   type="button"
                 >
                   Open Preferences
-                </button>
-                <button
-                  className={BTN_GHOST}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={regenerate}
                   type="button"
                 >
                   {I.retry} Retry
-                </button>
+                </Button>
               </div>
             </div>
           ) : aiOutput ? (
@@ -153,16 +155,17 @@ export function AiOutputDialog() {
                   via {aiOutput.cliName}
                 </span>
                 <span className="flex-1" />
-                <button className={BTN_GHOST} onClick={copy} type="button">
+                <Button variant="outline" size="sm" onClick={copy} type="button">
                   {I.copy} Copy
-                </button>
-                <button
-                  className={BTN_GHOST}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={regenerate}
                   type="button"
                 >
                   {I.retry} Regenerate
-                </button>
+                </Button>
               </div>
             </>
           ) : null}

@@ -14,6 +14,7 @@ import {
 } from "@dnd-kit/core";
 
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { useBoardStore } from "@/features/board/board.store";
 import { useRepoStore } from "@/features/repository/repository.store";
 import {
@@ -164,8 +165,10 @@ export function BoardView() {
           {activeProject ? activeProject.name : "All projects"}
         </div>
         <div className="flex items-center gap-1.5">
-          <button
+          <Button
             type="button"
+            variant="unstyled"
+            size="xs"
             disabled={projects.length === 0}
             title={
               projects.length === 0
@@ -176,14 +179,14 @@ export function BoardView() {
             }
             onClick={() => setNewCardOpen(true)}
             className={cn(
-              "h-6 px-2.5 rounded-[4px] text-[11px] font-medium",
+              "inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[4px] text-[11px] font-medium",
               projects.length > 0
-                ? "bg-accent text-accent-fg hover:opacity-90"
+                ? "!bg-accent !bg-none text-accent-fg border-0 cursor-pointer hover:!bg-accent hover:!bg-none"
                 : "bg-bg-2 text-fg-2 cursor-not-allowed",
             )}
           >
             + New card
-          </button>
+          </Button>
         </div>
       </div>
 

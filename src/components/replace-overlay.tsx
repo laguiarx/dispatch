@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BTN_GHOST, BTN_PRIMARY } from "@/lib/btn";
+import { Button } from "@/components/ui/button";
 import { useRepoStore } from "@/features/repository/repository.store";
 import * as replaceApi from "@/features/replace/replace.api";
 import type {
@@ -247,9 +247,9 @@ export function ReplaceOverlay() {
           <span className={TITLE}>Replace</span>
           <Kbd>⌘⇧H</Kbd>
           <span className="flex-1" />
-          <button className={BTN_GHOST} onClick={() => setOpen(false)}>
+          <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
             {I.x}
-          </button>
+          </Button>
         </div>
         <div className={INPUTS}>
           <div className={INPUT_ROW}>
@@ -268,18 +268,18 @@ export function ReplaceOverlay() {
               autoComplete="off"
               spellCheck={false}
             />
-            <button
+            <Button variant="unstyled"
               className={cn(FLAG_BASE, caseSensitive && FLAG_ON)}
               onClick={() => setCaseSensitive(!caseSensitive)}
             >
               Aa
-            </button>
-            <button
+            </Button>
+            <Button variant="unstyled"
               className={cn(FLAG_BASE, regex && FLAG_ON)}
               onClick={() => setRegex(!regex)}
             >
               .*
-            </button>
+            </Button>
           </div>
           <div className={INPUT_ROW}>
             <span className={RI_LABEL}>repl</span>
@@ -301,7 +301,7 @@ export function ReplaceOverlay() {
         <div className={META}>
           <span className={SCOPE_LABEL}>Scope</span>
           <div className={SEG_GROUP}>
-            <button
+            <Button variant="unstyled"
               className={cn(SEG_BTN, scope === "all" && SEG_BTN_ACTIVE)}
               onClick={() => {
                 setScope("all");
@@ -309,8 +309,8 @@ export function ReplaceOverlay() {
               }}
             >
               All files
-            </button>
-            <button
+            </Button>
+            <Button variant="unstyled"
               className={cn(SEG_BTN, scope === "changed" && SEG_BTN_ACTIVE)}
               onClick={() => {
                 setScope("changed");
@@ -318,8 +318,8 @@ export function ReplaceOverlay() {
               }}
             >
               Changed
-            </button>
-            <button
+            </Button>
+            <Button variant="unstyled"
               className={cn(SEG_BTN, scope === "current" && SEG_BTN_ACTIVE)}
               onClick={() => {
                 setScope("current");
@@ -328,7 +328,7 @@ export function ReplaceOverlay() {
               disabled={!selectedFilePath}
             >
               Current
-            </button>
+            </Button>
           </div>
           <span className="flex-1" />
           {previewed ? (
@@ -352,7 +352,7 @@ export function ReplaceOverlay() {
               return (
                 <div key={g.filePath} className={RP_FILE}>
                   <div className={RP_FILE_HEAD}>
-                    <button
+                    <Button variant="unstyled"
                       className={RP_FILE_CHECK}
                       onClick={() => toggleFile(fi)}
                     >
@@ -364,7 +364,7 @@ export function ReplaceOverlay() {
                       >
                         {all ? I.check : sel > 0 ? <span className={CB_MIX_DASH} /> : null}
                       </span>
-                    </button>
+                    </Button>
                     <span className="font-mono">{g.filePath}</span>
                     <span className="font-mono text-fg-2">
                       · {sel}/{g.occurrences.length}
@@ -372,7 +372,7 @@ export function ReplaceOverlay() {
                   </div>
                   <div className={RP_FILE_OCCS}>
                     {g.occurrences.map((o, oi) => (
-                      <button
+                      <Button variant="unstyled"
                         key={o.id}
                         className={RP_OCC_BASE}
                         onClick={() => toggleOcc(fi, oi)}
@@ -397,7 +397,7 @@ export function ReplaceOverlay() {
                             <span>{o.replacedLine}</span>
                           </div>
                         </div>
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
@@ -416,27 +416,29 @@ export function ReplaceOverlay() {
             Replacements are written to disk only when you click Apply.
           </span>
           <span className="flex-1" />
-          <button className={BTN_GHOST} onClick={() => setOpen(false)}>
+          <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
             Cancel
-          </button>
+          </Button>
           {previewed ? (
-            <button
-              className={BTN_PRIMARY}
+            <Button
+              variant="default"
+              size="sm"
               disabled={totalSelected === 0 || loading}
               onClick={applyNow}
             >
               Apply {totalSelected} replacement
               {totalSelected === 1 ? "" : "s"}
-            </button>
+            </Button>
           ) : (
-            <button
-              className={BTN_PRIMARY}
+            <Button
+              variant="default"
+              size="sm"
               onClick={runPreview}
               disabled={!find || loading}
             >
               {loading ? "Working…" : "Preview"}
               {!loading ? <Kbd>⌥↵</Kbd> : null}
-            </button>
+            </Button>
           )}
         </div>
       </div>

@@ -1,21 +1,20 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { BTN_GHOST, BTN_PRIMARY } from "@/lib/btn";
+import { Button } from "@/components/ui/button";
 import { useRepoStore } from "@/features/repository/repository.store";
 import { cn } from "@/lib/utils";
 import { I } from "./icons";
 import { Spinner } from "./spinner";
 
 // Shared shell styling for portal-anchored popovers. Floating card with
-// frosted glass, soft shadow, and a thin highlight-from-the-top inner
+// a solid surface, soft shadow, and a thin highlight-from-the-top inner
 // stroke. Width bumped slightly vs the old branch-only card to fit the
 // "From / Into / Status" three-row layout without crowding.
 const POPOVER_SHELL =
   "fixed z-[9999] w-[min(460px,94vw)] flex flex-col overflow-hidden " +
-  "bg-[color-mix(in_oklab,var(--bg-1)_96%,transparent)] " +
+  "bg-bg-1 " +
   "border border-bd-2 rounded-3 " +
-  "shadow-[0_18px_50px_rgba(0,0,0,0.5),0_0_0_0.5px_rgba(255,255,255,0.04)] " +
-  "backdrop-blur-card backdrop-saturate-[140%]";
+  "shadow-[0_18px_50px_rgba(0,0,0,0.5),0_0_0_0.5px_rgba(255,255,255,0.04)]";
 const POPOVER_HEAD =
   "flex items-center gap-2 px-3.5 py-3 border-b border-bd-0 bg-bg-2";
 const POPOVER_EYEBROW =
@@ -231,14 +230,14 @@ export function PrBranchChoiceDialog() {
       <div className={POPOVER_HEAD}>
         <span className={POPOVER_EYEBROW}>Git · Create PR</span>
         <span className="flex-1" />
-        <button
+        <Button variant="unstyled"
           className={POPOVER_CLOSE}
           onClick={closeDialog}
           type="button"
           title="Close"
         >
           {I.x}
-        </button>
+        </Button>
       </div>
 
       <div className="flex flex-col gap-3 px-4 py-3.5">
@@ -304,7 +303,7 @@ export function PrBranchChoiceDialog() {
                     "transition-colors duration-[120ms] focus:border-accent",
                   )}
                 />
-                <button
+                <Button variant="unstyled"
                   type="button"
                   title="Suggest a branch name from the current diff"
                   onClick={async () => {
@@ -326,7 +325,7 @@ export function PrBranchChoiceDialog() {
                   )}
                 >
                   {generating ? <Spinner /> : I.sparkles}
-                </button>
+                </Button>
               </div>
             ) : null}
           </div>
@@ -336,7 +335,7 @@ export function PrBranchChoiceDialog() {
         <div className="flex gap-3 items-start">
           <div className={ROW_LABEL}>Into</div>
           <div className="flex-1 relative">
-            <button
+            <Button variant="unstyled"
               ref={baseTriggerRef}
               type="button"
               onClick={() => setBasePickerOpen((v) => !v)}
@@ -355,7 +354,7 @@ export function PrBranchChoiceDialog() {
               </span>
               <span className="flex-1" />
               <span className="text-fg-3">{I.chevron}</span>
-            </button>
+            </Button>
             {basePickerOpen ? (
               <div
                 ref={basePopRef}
@@ -388,7 +387,7 @@ export function PrBranchChoiceDialog() {
                     );
                   }
                   return visible.map((name) => (
-                    <button
+                    <Button variant="unstyled"
                       key={name}
                       type="button"
                       onClick={() => {
@@ -406,7 +405,7 @@ export function PrBranchChoiceDialog() {
                         {name === base ? I.check : null}
                       </span>
                       {name}
-                    </button>
+                    </Button>
                   ));
                 })()}
               </div>
@@ -429,16 +428,18 @@ export function PrBranchChoiceDialog() {
         />
 
         <div className="flex gap-2 justify-end mt-1">
-          <button
-            className={BTN_GHOST}
+          <Button
+            variant="outline"
+            size="sm"
             onClick={closeDialog}
             type="button"
             disabled={generating || prDialog.statusLoading}
           >
             Cancel
-          </button>
-          <button
-            className={BTN_PRIMARY}
+          </Button>
+          <Button
+            variant="default"
+            size="sm"
             onClick={() => void onConfirm()}
             disabled={!canRun}
             type="button"
@@ -458,7 +459,7 @@ export function PrBranchChoiceDialog() {
             ) : (
               "Create PR"
             )}
-          </button>
+          </Button>
         </div>
       </div>
     </div>,
@@ -584,7 +585,7 @@ function StatusBlock({
               Update first?
             </div>
             <div className="flex flex-wrap gap-1.5 justify-end">
-              <button
+              <Button variant="unstyled"
                 type="button"
                 onClick={onRebase}
                 className={cn(
@@ -595,8 +596,8 @@ function StatusBlock({
                 title={`git rebase origin/${base}`}
               >
                 Rebase onto {base}
-              </button>
-              <button
+              </Button>
+              <Button variant="unstyled"
                 type="button"
                 onClick={onMerge}
                 className={cn(
@@ -607,8 +608,8 @@ function StatusBlock({
                 title={`git merge --no-edit origin/${base}`}
               >
                 Merge {base}
-              </button>
-              <button
+              </Button>
+              <Button variant="unstyled"
                 type="button"
                 onClick={onSkip}
                 className={cn(
@@ -619,7 +620,7 @@ function StatusBlock({
                 title="Open PR anyway — resolve conflicts on GitHub"
               >
                 Skip
-              </button>
+              </Button>
             </div>
           </>
         )}

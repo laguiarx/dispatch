@@ -4,6 +4,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import "@xterm/xterm/css/xterm.css";
+import { Button } from "@/components/ui/button";
 
 import { useRepoStore } from "@/features/repository/repository.store";
 import { useBoardStore } from "@/features/board/board.store";
@@ -124,7 +125,7 @@ export function TerminalDrawer() {
               onClose={() => closeTerminalTab(tab.id)}
             />
           ))}
-          <button
+          <Button variant="unstyled"
             type="button"
             onClick={() => openTerminalTab({ cwd: defaultCwd })}
             title="New terminal"
@@ -135,7 +136,7 @@ export function TerminalDrawer() {
             )}
           >
             <span className="text-[14px] leading-none">+</span>
-          </button>
+          </Button>
         </div>
         <div className="flex items-center px-1.5 gap-0.5 border-l border-bd-1">
           {/* Dock toggle — swaps bottom ↔ right. Distinct icon per
@@ -143,7 +144,7 @@ export function TerminalDrawer() {
               ("you're at the bottom — click to move me to the right").
               Lives in the drawer header (not the topbar) so it travels
               with the terminal whichever way it's docked. */}
-          <button
+          <Button variant="unstyled"
             type="button"
             className={ICON_BTN}
             onClick={() =>
@@ -161,8 +162,8 @@ export function TerminalDrawer() {
             }
           >
             {position === "bottom" ? I.sidebarRight : I.terminal}
-          </button>
-          <button
+          </Button>
+          <Button variant="unstyled"
             type="button"
             className={ICON_BTN}
             onClick={killTerminalSession}
@@ -170,8 +171,8 @@ export function TerminalDrawer() {
             title="Kill every terminal tab"
           >
             {I.discard}
-          </button>
-          <button
+          </Button>
+          <Button variant="unstyled"
             type="button"
             className={ICON_BTN}
             onClick={() => setTerminalOpen(false)}
@@ -179,7 +180,7 @@ export function TerminalDrawer() {
             title="Hide terminal (⌘`) — sessions keep running"
           >
             {I.x}
-          </button>
+          </Button>
         </div>
       </div>
       {/* Stack every tab's pane on top of each other; only the active one
@@ -232,7 +233,7 @@ function TabHandle({
       title={title}
     >
       <span className="truncate max-w-[160px]">{title}</span>
-      <button
+      <Button variant="unstyled"
         type="button"
         onMouseDown={(e) => {
           e.stopPropagation();
@@ -249,7 +250,7 @@ function TabHandle({
         )}
       >
         <span className="text-[10px] leading-none">×</span>
-      </button>
+      </Button>
     </div>
   );
 }

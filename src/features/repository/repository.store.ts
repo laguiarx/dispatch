@@ -51,9 +51,9 @@ export type StatusFilter =
   | "all"
   | ChangedFile["status"];
 
-export type SidebarTab = "changes" | "files" | "search";
+type SidebarTab = "changes" | "files" | "search";
 
-export type DiffMode = "sbs" | "inline" | "edit";
+type DiffMode = "sbs" | "inline" | "edit";
 
 export type UpdaterStatus =
   | "idle"
@@ -86,7 +86,7 @@ export function tabKey(t: FileTab): string {
   return `${t.path}#${t.staged === null ? "f" : t.staged ? "s" : "u"}`;
 }
 
-export type ConfirmRequest = {
+type ConfirmRequest = {
   title: string;
   body: string;
   confirmLabel: string;
@@ -116,7 +116,7 @@ export function filteredFiles(
  * `clearTabPendingCommand` to null it out so React re-renders don't replay
  * the keystrokes.
  */
-export type TerminalTab = {
+type TerminalTab = {
   id: string;
   cwd: string | null;
   title: string;

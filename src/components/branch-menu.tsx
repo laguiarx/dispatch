@@ -5,6 +5,7 @@ import type { PrSummary } from "@/features/git/git.api";
 import { cn } from "@/lib/utils";
 import { I } from "./icons";
 import { Spinner } from "./spinner";
+import { Button } from "@/components/ui/button";
 
 export function BranchMenu() {
   const open = useRepoStore((s) => s.branchMenuOpen);
@@ -172,7 +173,7 @@ export function BranchMenu() {
               autoComplete="off"
               spellCheck={false}
             />
-            <button
+            <Button variant="unstyled"
               type="button"
               className={cn(
                 "grid place-items-center w-6 h-6 rounded-1",
@@ -200,8 +201,8 @@ export function BranchMenu() {
               aria-label="Generate branch name with AI"
             >
               {generating ? <Spinner /> : I.sparkles}
-            </button>
-            <button
+            </Button>
+            <Button variant="unstyled"
               type="button"
               className={cn(
                 "font-mono text-[10px] uppercase tracking-[0.04em]",
@@ -214,11 +215,11 @@ export function BranchMenu() {
               title="Create branch (↵)"
             >
               create
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="flex items-stretch border-b border-bd-0">
-            <button
+            <Button variant="unstyled"
               className={cn(
                 "flex flex-1 items-center gap-2 min-w-0 px-3 py-1.5 text-[12px] text-accent",
                 "bg-transparent border-0 hover:bg-bg-hover",
@@ -230,8 +231,8 @@ export function BranchMenu() {
                 {I.plus}
               </span>
               <span className="truncate">Create new branch…</span>
-            </button>
-            <button
+            </Button>
+            <Button variant="unstyled"
               className={cn(
                 "grid w-8 place-items-center bg-transparent border-0 border-l border-bd-0",
                 "text-fg-2 cursor-pointer hover:bg-bg-hover hover:text-accent",
@@ -248,7 +249,7 @@ export function BranchMenu() {
               type="button"
             >
               {gitOpLoading === "sync" ? <Spinner /> : I.refresh}
-            </button>
+            </Button>
           </div>
         )}
         {branchesLoading && branches.length === 0 ? (
@@ -261,7 +262,7 @@ export function BranchMenu() {
             <div className={sectionHead}>
               <span>Local</span>
               {goneCount > 0 ? (
-                <button
+                <Button variant="unstyled"
                   type="button"
                   className={cn(
                     "text-[10px] font-medium normal-case tracking-normal",
@@ -276,7 +277,7 @@ export function BranchMenu() {
                   title={`Delete the ${goneCount} local branch${goneCount === 1 ? "" : "es"} whose remote was deleted`}
                 >
                   Prune gone ({goneCount})
-                </button>
+                </Button>
               ) : null}
             </div>
             {local.map((b) => (
@@ -338,15 +339,15 @@ export function BranchMenu() {
                   {s.message}
                 </span>
                 <span className="inline-flex gap-1">
-                  <button
+                  <Button variant="unstyled"
                     className={stashBtn}
                     onClick={() => applyStash(s.ref)}
                     title="Apply (keep stash)"
                     type="button"
                   >
                     apply
-                  </button>
-                  <button
+                  </Button>
+                  <Button variant="unstyled"
                     className={cn(
                       stashBtn,
                       "!text-accent !border-[color-mix(in_oklab,var(--accent)_40%,transparent)]",
@@ -356,8 +357,8 @@ export function BranchMenu() {
                     type="button"
                   >
                     pop
-                  </button>
-                  <button
+                  </Button>
+                  <Button variant="unstyled"
                     className={cn(
                       stashBtn,
                       "hover:!text-git-del hover:!border-[color-mix(in_oklab,var(--git-del)_40%,transparent)]",
@@ -367,7 +368,7 @@ export function BranchMenu() {
                     type="button"
                   >
                     drop
-                  </button>
+                  </Button>
                 </span>
               </div>
             ))}
@@ -409,7 +410,7 @@ function BranchRow({
         !branch.isCurrent && "hover:bg-bg-hover",
       )}
     >
-      <button
+      <Button variant="unstyled"
         type="button"
         className={cn(
           // Five tracks: check · name · PR badge · gone badge · upstream.
@@ -464,9 +465,9 @@ function BranchRow({
         ) : (
           <span aria-hidden="true" />
         )}
-      </button>
+      </Button>
       {onDelete ? (
-        <button
+        <Button variant="unstyled"
           type="button"
           className={cn(
             "grid place-items-center w-7 shrink-0 bg-transparent border-0 cursor-pointer",
@@ -491,7 +492,7 @@ function BranchRow({
           aria-label={`Delete ${branch.name}`}
         >
           {I.discard}
-        </button>
+        </Button>
       ) : null}
     </div>
   );

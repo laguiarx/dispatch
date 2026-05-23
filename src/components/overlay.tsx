@@ -34,7 +34,7 @@ export function Overlay({ onClose, children, style, centered }: Props) {
     <div
       className={cn(
         "fixed inset-0 z-50 grid justify-items-center",
-        "bg-[rgba(2,3,5,0.55)] backdrop-blur-[4px]",
+        "bg-[rgba(2,3,5,0.62)]",
         centered ? "items-center pt-0" : "items-start pt-[70px]",
       )}
       style={style}

@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRepoStore } from "@/features/repository/repository.store";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 type Anchor = { top: number; left: number };
 
@@ -100,15 +101,13 @@ export function GitMenu() {
 
   if (!open) return null;
 
-  // Common card shell shared with the other portal dropdowns (EditorMenu,
-  // PrFlow/PrBranchChoice). Frosted glass at higher opacity than the
-  // popovers so menu contents read crisply even over busy backgrounds.
+  // Common card shell shared with the other portal dropdowns. Use a solid
+  // surface so menus stay quiet and match the rest of the app chrome.
   const cardShell =
     "fixed z-[9999] min-w-[260px] max-w-[320px] py-1 " +
-    "bg-[color-mix(in_oklab,var(--bg-1)_92%,transparent)] " +
+    "bg-bg-1 " +
     "border border-bd-2 rounded-3 " +
-    "shadow-[0_18px_50px_rgba(0,0,0,0.5),0_0_0_0.5px_rgba(255,255,255,0.04)] " +
-    "backdrop-blur-card backdrop-saturate-[140%]";
+    "shadow-[0_18px_50px_rgba(0,0,0,0.5),0_0_0_0.5px_rgba(255,255,255,0.04)]";
   const sectionHead =
     "px-3.5 pt-2.5 pb-1.5 text-fg-2 text-[9.5px] uppercase tracking-[0.08em]";
   const itemBase =
@@ -123,7 +122,7 @@ export function GitMenu() {
     >
       <div className={sectionHead}>AI Assist</div>
       {READ_ONLY_ACTIONS.map((a) => (
-        <button
+        <Button variant="unstyled"
           key={a.kind}
           className={cn(
             itemBase,
@@ -139,7 +138,7 @@ export function GitMenu() {
           <span className="text-fg-2 text-[10.5px] leading-[1.4]">
             {a.description}
           </span>
-        </button>
+        </Button>
       ))}
     </div>,
     document.body,

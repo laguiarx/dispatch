@@ -45,8 +45,9 @@ pub struct Card {
     /// Hint to the CLI mapping that the user wants speed over depth.
     /// Currently advisory only — interpretation depends on the agent
     /// (e.g. claude may switch to haiku, codex may force minimal
-    /// reasoning). Stored as i64 because SQLite has no native bool.
-    pub fast_mode: i64,
+    /// reasoning). Stored as INTEGER in SQLite, but serialized to JS as
+    /// a real boolean so the UI option matching stays strict.
+    pub fast_mode: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

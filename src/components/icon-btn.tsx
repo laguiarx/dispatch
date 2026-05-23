@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 type Props = {
   title: string;
@@ -22,7 +23,7 @@ type Props = {
  */
 export function IconBtn({ title, onClick, active, disabled, children }: Props) {
   return (
-    <button
+    <Button variant="unstyled"
       className={cn(
         "relative grid h-6 w-6 place-items-center rounded-1",
         "transition-colors duration-[120ms]",
@@ -39,6 +40,6 @@ export function IconBtn({ title, onClick, active, disabled, children }: Props) {
       disabled={disabled}
     >
       {children}
-    </button>
+    </Button>
   );
 }

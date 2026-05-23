@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { Button } from "@/components/ui/button";
 
 type Props = { children: ReactNode };
 type State = { error: Error | null; info: ErrorInfo | null };
@@ -59,7 +60,7 @@ export class ErrorBoundary extends Component<Props, State> {
           {stack}
         </pre>
         <div className="flex gap-2 shrink-0">
-          <button
+          <Button variant="unstyled"
             className={
               "inline-flex items-center gap-1.5 h-7 px-3 rounded-2 " +
               "bg-bg-2 border border-bd-1 text-fg-1 text-[12px] " +
@@ -70,19 +71,19 @@ export class ErrorBoundary extends Component<Props, State> {
             type="button"
           >
             Copy stack
-          </button>
-          <button
+          </Button>
+          <Button variant="unstyled"
             className={
               "inline-flex items-center gap-1.5 h-7 px-3 rounded-2 " +
-              "bg-accent text-accent-fg text-[12px] font-semibold " +
-              "hover:bg-accent-hi cursor-pointer"
+              "!bg-accent !bg-none text-accent-fg text-[12px] font-semibold " +
+              "hover:!bg-accent hover:!bg-none cursor-pointer"
             }
             onClick={this.reload}
             type="button"
           >
             Reload window
-          </button>
-          <button
+          </Button>
+          <Button variant="unstyled"
             className={
               "inline-flex items-center gap-1.5 h-7 px-3 rounded-2 " +
               "bg-transparent border border-bd-1 text-fg-1 text-[12px] " +
@@ -92,7 +93,7 @@ export class ErrorBoundary extends Component<Props, State> {
             type="button"
           >
             Dismiss
-          </button>
+          </Button>
         </div>
       </div>
     );

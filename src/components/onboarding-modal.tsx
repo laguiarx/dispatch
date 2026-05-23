@@ -6,7 +6,7 @@ import {
   type Integration,
   type IntegrationsReport,
 } from "@/features/ai/ai.api";
-import { BTN_GHOST, BTN_PRIMARY } from "@/lib/btn";
+import { Button } from "@/components/ui/button";
 import { isTauri } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { I } from "./icons";
@@ -55,8 +55,8 @@ const INSTALL_PLAY_BASE =
   "w-7 grid place-items-center rounded-[4px] cursor-pointer text-[12px] leading-none pl-[2px] " +
   "transition-[filter] duration-[120ms]";
 const INSTALL_PLAY_ENABLED =
-  "bg-accent text-white border border-[color-mix(in_oklab,var(--accent)_80%,#000)] " +
-  "hover:brightness-110";
+  "!bg-accent !bg-none text-white border border-[color-mix(in_oklab,var(--accent)_80%,#000)] " +
+  "hover:!bg-accent hover:!bg-none";
 const INSTALL_PLAY_DISABLED =
   "bg-bg-2 text-fg-3 border border-bd-1 cursor-not-allowed";
 // While polling, dim the play button less aggressively — spinner reads as
@@ -205,14 +205,14 @@ export function OnboardingModal() {
         <div className={HEAD}>
           <span className={STEP_LABEL}>Step {step + 1} of 4</span>
           <span className="flex-1" />
-          <button
+          <Button variant="unstyled"
             className="w-[22px] h-[22px] grid place-items-center rounded-[4px] text-fg-3 bg-transparent border-0 cursor-pointer hover:bg-bg-hover hover:text-fg-0"
             onClick={finish}
             title="Close"
             aria-label="Close"
           >
             {I.x}
-          </button>
+          </Button>
         </div>
 
         {step === 0 ? (
@@ -293,9 +293,9 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
       </div>
       <div className={FOOTER}>
         <span className="flex-1" />
-        <button className={BTN_PRIMARY} onClick={onNext} type="button">
+        <Button variant="default" size="sm" onClick={onNext} type="button">
           Next
-        </button>
+        </Button>
       </div>
     </>
   );
@@ -358,23 +358,25 @@ function HomebrewStep({
             onRun={onRun}
           />
         ) : null}
-        <button
-          className={cn(BTN_GHOST, "mt-3")}
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-3"
           onClick={onRefresh}
           type="button"
           disabled={loading}
         >
           {I.retry} Re-scan
-        </button>
+        </Button>
       </div>
       <div className={FOOTER}>
-        <button className={BTN_GHOST} onClick={onBack} type="button">
+        <Button variant="outline" size="sm" onClick={onBack} type="button">
           Back
-        </button>
+        </Button>
         <span className="flex-1" />
-        <button className={BTN_PRIMARY} onClick={onNext} type="button">
+        <Button variant="default" size="sm" onClick={onNext} type="button">
           {brewMissing ? "Skip — finish later" : "Next"}
-        </button>
+        </Button>
       </div>
     </>
   );
@@ -440,23 +442,25 @@ function ToolsStep({
             })
           )}
         </div>
-        <button
-          className={cn(BTN_GHOST, "mt-3")}
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-3"
           onClick={onRefresh}
           type="button"
           disabled={loading}
         >
           {I.retry} Re-scan
-        </button>
+        </Button>
       </div>
       <div className={FOOTER}>
-        <button className={BTN_GHOST} onClick={onBack} type="button">
+        <Button variant="outline" size="sm" onClick={onBack} type="button">
           Back
-        </button>
+        </Button>
         <span className="flex-1" />
-        <button className={BTN_PRIMARY} onClick={onNext} type="button">
+        <Button variant="default" size="sm" onClick={onNext} type="button">
           Next
-        </button>
+        </Button>
       </div>
     </>
   );
@@ -520,7 +524,7 @@ function InstallCard({
         <div className={INT_PURPOSE}>{it.purpose}</div>
         <div className={INSTALL_ROW}>
           <code className={INSTALL_CMD}>{it.installCommand}</code>
-          <button
+          <Button variant="unstyled"
             type="button"
             className={cn(INSTALL_PLAY_BASE, playSkin)}
             onClick={() => onRun(it)}
@@ -538,7 +542,7 @@ function InstallCard({
             aria-label="Install"
           >
             {installing ? <Spinner /> : "▶"}
-          </button>
+          </Button>
         </div>
         {installing ? (
           <div className={INSTALL_PREREQ}>
@@ -599,16 +603,16 @@ function DoneStep({
         </div>
       </div>
       <div className={FOOTER}>
-        <button className={BTN_GHOST} onClick={onBack} type="button">
+        <Button variant="outline" size="sm" onClick={onBack} type="button">
           Back
-        </button>
+        </Button>
         <span className="flex-1" />
-        <button className={BTN_GHOST} onClick={onFinish} type="button">
+        <Button variant="outline" size="sm" onClick={onFinish} type="button">
           Pick later
-        </button>
-        <button className={BTN_PRIMARY} onClick={onPickRepo} type="button">
+        </Button>
+        <Button variant="default" size="sm" onClick={onPickRepo} type="button">
           Open repository…
-        </button>
+        </Button>
       </div>
     </>
   );

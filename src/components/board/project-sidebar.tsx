@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
   DndContext,
@@ -16,10 +16,17 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { Button } from "@/components/ui/button";
 
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/spinner";
 import { I } from "@/components/icons";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useBoardStore } from "@/features/board/board.store";
 import { useRepoStore } from "@/features/repository/repository.store";
 import type {
@@ -129,7 +136,7 @@ export function ProjectSidebar() {
         <span className="text-[10.5px] font-mono uppercase tracking-wider text-fg-2">
           Workspace
         </span>
-        <button
+        <Button variant="unstyled"
           type="button"
           onClick={onAdd}
           disabled={adding}
@@ -140,7 +147,7 @@ export function ProjectSidebar() {
           )}
         >
           +
-        </button>
+        </Button>
       </div>
 
       <nav className="flex flex-col gap-px p-1.5 overflow-y-auto flex-1 min-h-0">
@@ -315,7 +322,7 @@ function ProjectRow({
           row when idle. Pointer-down begins the sortable drag thanks to
           its listeners; clicks fall through to the row's onClick. */}
       {dragHandleProps ? (
-        <button
+        <Button variant="unstyled"
           type="button"
           {...dragHandleProps.attributes}
           {...dragHandleProps.listeners}
@@ -327,9 +334,9 @@ function ProjectRow({
           )}
         >
           <span className="text-[10px] leading-none">⋮⋮</span>
-        </button>
+        </Button>
       ) : null}
-      <button
+      <Button variant="unstyled"
         type="button"
         onClick={(e) => {
           e.stopPropagation();
@@ -343,11 +350,11 @@ function ProjectRow({
         title={collapsed ? "Expand" : "Collapse"}
       >
         <span className="text-[8px]">▶</span>
-      </button>
+      </Button>
       <span className="text-[12px] flex-1 min-w-0 truncate font-medium">
         {label}
       </span>
-      <button
+      <Button variant="unstyled"
         type="button"
         onClick={(e) => {
           e.stopPropagation();
@@ -357,25 +364,29 @@ function ProjectRow({
         className="opacity-0 group-hover:opacity-100 w-4 h-4 grid place-items-center rounded text-fg-2 hover:bg-bg-hover hover:text-fg-0 text-[12px] leading-none shrink-0"
       >
         +
-      </button>
+      </Button>
       <KebabMenu
         items={[
           {
             label: "Configure setup",
             onClick: onConfigureSetup,
+            icon: I.gear,
           },
           {
             label: "Configure actions",
             onClick: onConfigureScripts,
+            icon: I.play,
           },
           {
             label: "Rename project",
             onClick: onRename,
+            icon: I.edit,
           },
           {
             label: "Remove",
             onClick: onRemove,
             danger: true,
+            icon: I.discard,
           },
         ]}
       />
@@ -431,7 +442,7 @@ function CardRow({
   onClick: () => void;
 }) {
   return (
-    <button
+    <Button variant="unstyled"
       type="button"
       onClick={onClick}
       className={cn(
@@ -447,7 +458,7 @@ function CardRow({
       <span className="text-[11.5px] flex-1 min-w-0 truncate">
         {card.title}
       </span>
-    </button>
+    </Button>
   );
 }
 
@@ -502,106 +513,64 @@ type KebabItem = {
   label: string;
   onClick: () => void | Promise<void>;
   danger?: boolean;
+  icon?: ReactNode;
 };
 
 function KebabMenu({ items }: { items: KebabItem[] }) {
-  const [open, setOpen] = useState(false);
-  const [anchor, setAnchor] = useState<{ top: number; left: number } | null>(
-    null,
-  );
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const menuRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    if (triggerRef.current) {
-      const r = triggerRef.current.getBoundingClientRect();
-      setAnchor({ top: r.bottom + 4, left: r.left });
-    }
-    function onDocClick(e: MouseEvent) {
-      const t = e.target as Node | null;
-      const insideTrigger =
-        triggerRef.current && t && triggerRef.current.contains(t);
-      const insideMenu =
-        menuRef.current && t && menuRef.current.contains(t);
-      if (!insideTrigger && !insideMenu) setOpen(false);
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("mousedown", onDocClick);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDocClick);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
   return (
-    <>
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          setOpen((o) => !o);
-        }}
-        title="More actions"
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="unstyled"
+          type="button"
+          onClick={(e) => e.stopPropagation()}
+          title="More actions"
+          className={cn(
+            "opacity-0 group-hover:opacity-100 h-7 w-7 grid place-items-center rounded-[5px] border border-transparent",
+            "text-fg-2 bg-transparent transition-colors duration-100 shrink-0",
+            "hover:bg-bg-hover hover:text-fg-0 hover:border-bd-1",
+            "data-[state=open]:opacity-100 data-[state=open]:bg-bg-2 data-[state=open]:text-fg-0 data-[state=open]:border-bd-1",
+            "focus:outline-none focus-visible:outline-none focus-visible:ring-0",
+          )}
+        >
+          <span className="text-[14px] leading-none">⋯</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        sideOffset={3}
+        onClick={(e) => e.stopPropagation()}
         className={cn(
-          "opacity-0 group-hover:opacity-100 w-4 h-4 grid place-items-center",
-          "rounded text-fg-2 hover:bg-bg-hover hover:text-fg-0 text-[14px] leading-none shrink-0",
-          open && "opacity-100 bg-bg-hover text-fg-0",
+          "min-w-[204px] border border-bd-1 bg-bg-1 p-1 text-fg-1",
+          "rounded-[7px] shadow-[0_14px_36px_rgba(0,0,0,0.42)]",
+          "outline-none ring-0 focus:outline-none focus-visible:outline-none",
         )}
       >
-        ⋯
-      </button>
-      {open && anchor
-        ? createPortal(
-            <div
-              ref={menuRef}
-              style={{
-                position: "fixed",
-                top: anchor.top,
-                left: anchor.left,
-              }}
-              className={cn(
-                "z-[1000] bg-bg-1 border border-bd-1 rounded-[6px]",
-                // `inline-flex flex-col` lets the dropdown size to the
-                // widest child's intrinsic width — `w-max` on its own
-                // fights with `w-full` items (the children's stretched
-                // width has no fixed reference until the parent is
-                // sized, so browsers resolve it loosely and the menu
-                // ends up much wider than the longest label).
-                "shadow-[0_12px_32px_rgba(0,0,0,0.5)] py-1 inline-flex flex-col",
-              )}
-            >
-              {items.map((item, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    setOpen(false);
-                    await item.onClick();
-                  }}
-                  className={cn(
-                    "w-full text-left px-2.5 py-1 text-[11.5px] whitespace-nowrap",
-                    item.danger
-                      ? // Default red so the user always reads it as
-                        // destructive at a glance; hover bumps to a
-                        // brighter red + soft red bg for affirmation.
-                        "text-diff-del-mark hover:text-[color:color-mix(in_oklab,var(--diff-del-mark)_70%,white)] hover:bg-[color-mix(in_oklab,var(--diff-del-mark)_12%,transparent)]"
-                      : "text-fg-1 hover:bg-bg-hover hover:text-fg-0",
-                  )}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>,
-            document.body,
-          )
-        : null}
-    </>
+        {items.map((item, i) => (
+          <DropdownMenuItem
+            key={i}
+            variant={item.danger ? "destructive" : "default"}
+            onSelect={() => {
+              void item.onClick();
+            }}
+            className={cn(
+              "h-8 gap-2 rounded-[5px] px-2.5 text-[12px]",
+              "focus:bg-bg-hover focus:text-fg-0",
+              item.danger &&
+                "text-diff-del-mark focus:bg-[color-mix(in_oklab,var(--diff-del-mark)_8%,transparent)] focus:text-diff-del-mark",
+            )}
+          >
+            {item.icon ? (
+              <span className="w-4 shrink-0 grid place-items-center text-[12px]">
+                {item.icon}
+              </span>
+            ) : (
+              <span className="w-4 shrink-0" />
+            )}
+            <span className="truncate">{item.label}</span>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

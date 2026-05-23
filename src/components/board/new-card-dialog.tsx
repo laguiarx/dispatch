@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 
 import { cn } from "@/lib/utils";
 import { Overlay } from "@/components/overlay";
@@ -300,8 +301,8 @@ export function NewCardDialog({ open, onClose }: Props) {
         onDragLeave={onDragLeave}
         onDrop={onDrop}
         className={cn(
-          "w-[560px] max-w-[94vw] flex flex-col overflow-hidden relative",
-          "bg-bg-1 border border-bd-2 rounded-3 shadow-[0_24px_60px_rgba(0,0,0,0.55)]",
+          "w-[640px] max-w-[calc(100vw-32px)] max-h-[calc(100vh-72px)] flex flex-col overflow-hidden relative",
+          "bg-bg-1 border border-bd-2 rounded-3",
           dropActive && "ring-2 ring-accent/60",
         )}
       >
@@ -325,30 +326,25 @@ export function NewCardDialog({ open, onClose }: Props) {
           }}
         />
         {/* Header — same chrome as Preferences */}
-        <div className="flex items-center gap-2 px-3.5 py-3 border-b border-bd-1">
+        <div className="flex items-center gap-2 px-4 h-12 border-b border-bd-1 shrink-0">
           <span className="text-[14px] font-semibold tracking-[-0.01em]">
             New card
           </span>
           <Kbd>⌘N</Kbd>
           <span className="flex-1" />
-          <button
+          <Button variant="unstyled"
             type="button"
             onClick={onClose}
             title="Close"
             className="w-[22px] h-[22px] grid place-items-center rounded-[4px] text-fg-3 bg-transparent border-0 cursor-pointer hover:bg-bg-hover hover:text-fg-0"
           >
             {I.x}
-          </button>
+          </Button>
         </div>
 
         {/* Body */}
-        <div className="flex flex-col gap-3 px-4 py-4">
-          <section
-            className={cn(
-              "flex flex-col gap-2 p-3.5 rounded-[8px]",
-              "bg-bg-2 border border-bd-1",
-            )}
-          >
+        <div className="grid grid-cols-1 gap-4 px-4 py-4 overflow-y-auto md:grid-cols-[minmax(0,1fr)_220px]">
+          <section className="min-w-0 flex flex-col gap-2">
             <label className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-fg-2">
               Brief
             </label>
@@ -367,7 +363,7 @@ export function NewCardDialog({ open, onClose }: Props) {
               }}
               className={cn(
                 "h-9 px-2.5 rounded-[6px]",
-                "text-[13.5px] font-medium text-fg-0 bg-bg-1 border border-bd-2 outline-none",
+                "text-[13.5px] font-medium text-fg-0 bg-bg-0 border border-bd-2 outline-none",
                 "placeholder:text-fg-3 focus:border-bd-1",
               )}
             />
@@ -380,23 +376,24 @@ export function NewCardDialog({ open, onClose }: Props) {
                   void submit(true);
                 }
               }}
-              rows={6}
+              rows={8}
               className={cn(
-                "text-[12px] text-fg-1 bg-bg-1",
+                "text-[12px] text-fg-1 bg-bg-0",
                 "border border-bd-2 rounded-[6px] p-2.5 outline-none",
-                "placeholder:text-fg-3 leading-relaxed resize-y min-h-[120px]",
+                "placeholder:text-fg-3 leading-relaxed resize-y min-h-[174px]",
                 "focus:border-bd-1 font-mono",
               )}
             />
 
             <div className="flex items-center gap-2 pt-1">
-              <button
+              <Button
+                variant="unstyled"
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 title="Attach files (or drag-drop / ⌘V to paste)"
                 className={cn(
                   "h-7 inline-flex items-center gap-1.5 px-2 rounded-[5px]",
-                  "text-[11px] text-fg-2 border border-bd-2 bg-bg-1",
+                  "text-[11px] text-fg-2 border border-bd-2 bg-bg-0",
                   "hover:bg-bg-hover hover:text-fg-0 hover:border-bd-1",
                   "transition-colors",
                 )}
@@ -406,10 +403,7 @@ export function NewCardDialog({ open, onClose }: Props) {
                 {pendingFiles.length > 0 ? (
                   <span className="text-fg-3">· {pendingFiles.length}</span>
                 ) : null}
-              </button>
-              <span className="text-[10.5px] text-fg-3 font-mono">
-                drag-drop · ⌘V paste
-              </span>
+              </Button>
             </div>
 
             {pendingFiles.length > 0 ? (
@@ -425,16 +419,11 @@ export function NewCardDialog({ open, onClose }: Props) {
             ) : null}
           </section>
 
-          <section
-            className={cn(
-              "flex flex-col gap-2 p-3.5 rounded-[8px]",
-              "bg-bg-2 border border-bd-1",
-            )}
-          >
+          <section className="min-w-0 flex flex-col gap-2 border-t border-bd-1 pt-4 md:border-t-0 md:border-l md:pl-4 md:pt-0">
             <label className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-fg-2">
               Run config
             </label>
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5 md:flex-col md:items-stretch">
               {projects.length > 0 ? (
                 <ChipPopover<string>
                   label="Project"
@@ -442,6 +431,8 @@ export function NewCardDialog({ open, onClose }: Props) {
                   options={projectOptions}
                   onChange={(id) => setProjectId(id)}
                   searchPlaceholder="Search projects…"
+                  fullWidth
+                  menuMinWidth={260}
                 />
               ) : null}
               <ChipPopover<AgentId>
@@ -451,6 +442,7 @@ export function NewCardDialog({ open, onClose }: Props) {
                 onChange={setAgent}
                 enabledValues={availableAgents}
                 searchable={false}
+                fullWidth
               />
               <ChipPopover<Priority>
                 label="Priority"
@@ -458,12 +450,8 @@ export function NewCardDialog({ open, onClose }: Props) {
                 options={PRIORITY_OPTIONS}
                 onChange={setPriority}
                 searchable={false}
+                fullWidth
               />
-              {/* Base branch the worktree will fork off of. Default is
-                  the project's tracked default (main / develop / etc).
-                  Free-text fallback (`allowCustom`) lets users target a
-                  release branch or anything else `git worktree add`
-                  resolves locally, without us hardcoding a list. */}
               <ChipPopover<string | null>
                 label="Base"
                 value={baseBranch}
@@ -482,6 +470,8 @@ export function NewCardDialog({ open, onClose }: Props) {
                 onChange={setBaseBranch}
                 allowCustom
                 searchPlaceholder="Search branches…"
+                fullWidth
+                menuMinWidth={260}
               />
               <ChipPopover<string | null>
                 label="Model"
@@ -491,22 +481,17 @@ export function NewCardDialog({ open, onClose }: Props) {
                   label: m.label,
                 }))}
                 onChange={setModel}
-                // Searchable + allowCustom so the user can type any
-                // model id their CLI accepts (e.g. `claude-sonnet-4-5`,
-                // a future model that isn't in our curated list yet).
                 allowCustom
+                fullWidth
+                menuMinWidth={260}
               />
-              {/* Both CLIs expose a reasoning/effort knob and a fast-
-                  mode toggle (claude has them under ⇧⌘E in the GUI,
-                  codex via `-c model_reasoning_effort`). We surface
-                  both for both agents and let the backend decide which
-                  flag actually applies. */}
               <ChipPopover<string | null>
                 label="Reasoning"
                 value={reasoning}
                 options={REASONING_OPTIONS}
                 onChange={setReasoning}
                 searchable={false}
+                fullWidth
               />
               <ChipPopover<boolean>
                 label="Mode"
@@ -514,6 +499,7 @@ export function NewCardDialog({ open, onClose }: Props) {
                 options={FAST_MODE_OPTIONS}
                 onChange={setFastMode}
                 searchable={false}
+                fullWidth
               />
             </div>
           </section>
@@ -526,7 +512,7 @@ export function NewCardDialog({ open, onClose }: Props) {
             <Kbd>↵</Kbd> to create and run
           </span>
           <span className="flex-1" />
-          <button
+          <Button variant="unstyled"
             type="button"
             onClick={onClose}
             className={cn(
@@ -536,19 +522,19 @@ export function NewCardDialog({ open, onClose }: Props) {
             )}
           >
             Cancel <Kbd>Esc</Kbd>
-          </button>
-          <button
+          </Button>
+          <Button variant="unstyled"
             type="button"
             disabled={!title.trim() || !projectId || submitting}
             onClick={() => submit(false)}
             className={cn(
               "inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-medium",
-              "bg-accent text-accent-fg border-0 cursor-pointer",
-              "hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed",
+              "!bg-accent !bg-none text-accent-fg border-0 cursor-pointer",
+              "hover:!bg-accent hover:!bg-none disabled:opacity-40 disabled:cursor-not-allowed",
             )}
           >
             {submitting ? "Creating…" : "Create card"}
-          </button>
+          </Button>
         </div>
       </div>
     </Overlay>
@@ -617,7 +603,7 @@ function PendingThumb({
           </span>
         )}
       </div>
-      <button
+      <Button variant="unstyled"
         type="button"
         onClick={onRemove}
         title="Remove"
@@ -628,7 +614,7 @@ function PendingThumb({
         )}
       >
         ×
-      </button>
+      </Button>
     </div>
   );
 }

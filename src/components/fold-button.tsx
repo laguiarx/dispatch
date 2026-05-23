@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 type Props = {
   collapsed: boolean;
@@ -12,7 +13,7 @@ type Props = {
  */
 export function FoldButton({ collapsed, onClick }: Props) {
   return (
-    <button
+    <Button variant="unstyled"
       type="button"
       className={cn(
         "grid h-4 w-4 place-items-center rounded-[3px] bg-transparent",
@@ -38,6 +39,6 @@ export function FoldButton({ collapsed, onClick }: Props) {
           strokeLinejoin="round"
         />
       </svg>
-    </button>
+    </Button>
   );
 }

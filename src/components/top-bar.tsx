@@ -11,6 +11,7 @@ import { IconBtn } from "./icon-btn";
 import { Spinner } from "./spinner";
 import { BranchMenu } from "./branch-menu";
 import { GitMenu } from "./git-menu";
+import { Button } from "@/components/ui/button";
 
 /**
  * Click-and-drag-to-move handler attached to the topbar.
@@ -148,7 +149,7 @@ export function TopBar() {
               <span className="font-medium">{repository.name}</span>
             </div>
             <div className="relative">
-              <button
+              <Button variant="unstyled"
                 // BranchMenu queries this attribute for its outside-click logic.
                 data-branch-pill-trigger
                 className={cn(
@@ -178,7 +179,7 @@ export function TopBar() {
                 <span className="grid place-items-center text-fg-3">
                   {I.chevron}
                 </span>
-              </button>
+              </Button>
               <BranchMenu />
             </div>
             <PrLauncher
@@ -276,13 +277,13 @@ function UpdateButton({
       : "Relaunch to finish update";
 
   return (
-    <button
+    <Button variant="unstyled"
       type="button"
       className={cn(
         "inline-flex items-center gap-1.5 h-6 px-2 rounded-2 border-0",
-        "bg-accent text-accent-fg text-[12px] font-medium cursor-pointer",
-        "transition-[filter,opacity] duration-[120ms]",
-        "hover:not-disabled:brightness-110",
+        "!bg-accent !bg-none text-accent-fg text-[12px] font-medium cursor-pointer",
+        "transition-none",
+        "hover:not-disabled:!bg-accent hover:not-disabled:!bg-none",
         "disabled:opacity-70 disabled:cursor-default",
         "[&_[data-ai-spinner]]:h-3 [&_[data-ai-spinner]]:w-3",
       )}
@@ -292,7 +293,7 @@ function UpdateButton({
     >
       {downloading ? <Spinner /> : I.download}
       <span>{downloading ? "Updating" : "Update"}</span>
-    </button>
+    </Button>
   );
 }
 
@@ -330,7 +331,7 @@ function PrLauncher({
         hot && "bg-bg-active",
       )}
     >
-      <button
+      <Button variant="unstyled"
         type="button"
         // PR-flow dialogs (`PrBranchChoiceDialog`, `PrFlowDialog`) anchor
         // themselves beneath this trigger via `getBoundingClientRect`.
@@ -356,8 +357,8 @@ function PrLauncher({
           {I.git}
         </span>
         <span className="font-medium">Create PR</span>
-      </button>
-      <button
+      </Button>
+      <Button variant="unstyled"
         type="button"
         // GitMenu uses this attribute to anchor its portal-mounted
         // dropdown beneath the chevron and to detect "click on the
@@ -379,7 +380,7 @@ function PrLauncher({
         title="AI Assist · summarize, review"
       >
         {I.chevron}
-      </button>
+      </Button>
       <GitMenu />
     </div>
   );

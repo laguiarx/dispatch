@@ -1,6 +1,7 @@
 import { useRepoStore, tabKey, type FileTab } from "@/features/repository/repository.store";
 import { cn, basename } from "@/lib/utils";
 import { I, STATUS_META } from "./icons";
+import { Button } from "@/components/ui/button";
 
 /**
  * Horizontal tab strip at the top of the diff pane. Each tab represents
@@ -132,7 +133,7 @@ function TabItem({
           {variantLabel}
         </span>
       ) : null}
-      <button
+      <Button variant="unstyled"
         type="button"
         className={cn(
           "grid place-items-center h-4 w-4 rounded-[3px] shrink-0",
@@ -157,7 +158,7 @@ function TabItem({
         ) : (
           I.x
         )}
-      </button>
+      </Button>
     </div>
   );
 }

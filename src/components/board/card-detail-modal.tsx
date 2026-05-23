@@ -14,6 +14,14 @@ import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/spinner";
 import { I } from "@/components/icons";
+import { Button } from "@/components/ui/button";
+import { useDismissableLayer } from "@/hooks/use-dismissable-layer";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { iconNodeFor } from "./action-icon";
 import { ChipPopover, type ChipOption } from "./chip-popover";
 import { useBoardStore } from "@/features/board/board.store";
@@ -71,6 +79,9 @@ export function CardDetailModal({ onOpenReview, onApprove }: Props) {
   );
   const approving = useBoardStore((s) =>
     cardId ? s.approvingCardIds.has(cardId) : false,
+  );
+  const archiving = useBoardStore((s) =>
+    cardId ? s.archivingCardIds.has(cardId) : false,
   );
   const reloadRuns = useBoardStore((s) => s.reloadRuns);
   const reloadRunLogs = useBoardStore((s) => s.reloadRunLogs);
@@ -370,12 +381,15 @@ export function CardDetailModal({ onOpenReview, onApprove }: Props) {
   if (card.worktreePath && (isReview || isDone)) {
     kebabItems.push({
       label: "Open diff",
+      icon: "⌘",
       onClick: openDiff,
     });
   }
   if (isDone && card.worktreePath) {
     kebabItems.push({
-      label: "Archive worktree",
+      label: archiving ? "Archiving worktree..." : "Archive worktree",
+      icon: "↧",
+      disabled: archiving,
       onClick: async () => {
         await archiveCard(card.id);
         pushToast("Worktree removed");
@@ -384,6 +398,7 @@ export function CardDetailModal({ onOpenReview, onApprove }: Props) {
   }
   kebabItems.push({
     label: "Delete card",
+    icon: "⌫",
     danger: true,
     onClick: () => {
       setConfirm({
@@ -405,8 +420,8 @@ export function CardDetailModal({ onOpenReview, onApprove }: Props) {
       {/* Header — back arrow + task tag + title, with primary action +
           kebab on the right. No `X` here: closing the view means going
           back to the board, which the arrow already conveys. */}
-      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-bd-1 shrink-0">
-        <button
+      <div className="flex items-center gap-2 px-3 h-10 border-b border-bd-2 shrink-0">
+        <Button variant="unstyled"
           type="button"
           onClick={() => selectCard(null)}
           title="Back to board"
@@ -418,7 +433,7 @@ export function CardDetailModal({ onOpenReview, onApprove }: Props) {
         >
           <span className="text-[12px] leading-none">←</span>
           <span>Back</span>
-        </button>
+        </Button>
         {/* Header title is read-only — the bubble below is where edits
             happen so the affordance lives in one obvious spot. */}
         <span className="text-[14px] font-semibold tracking-[-0.01em] truncate flex-1 min-w-0">
@@ -469,6 +484,15 @@ export function CardDetailModal({ onOpenReview, onApprove }: Props) {
             {isDone && card.prUrl ? (
               <HeaderBtn primary onClick={openPr}>
                 Open PR
+              </HeaderBtn>
+            ) : null}
+            {archiving ? (
+              <HeaderBtn
+                disabled
+                icon={<Spinner className="w-3 h-3" />}
+                onClick={() => undefined}
+              >
+                Archiving...
               </HeaderBtn>
             ) : null}
             {running ? (
@@ -540,7 +564,7 @@ export function CardDetailModal({ onOpenReview, onApprove }: Props) {
                     )}
                   />
                 ) : (
-                  <button
+                  <Button variant="unstyled"
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -559,7 +583,7 @@ export function CardDetailModal({ onOpenReview, onApprove }: Props) {
                     )}
                   >
                     {card.title}
-                  </button>
+                  </Button>
                 )}
                 {editingDescription && isBacklog ? (
                   <textarea
@@ -588,7 +612,7 @@ export function CardDetailModal({ onOpenReview, onApprove }: Props) {
                     )}
                   />
                 ) : card.description ? (
-                  <button
+                  <Button variant="unstyled"
                     type="button"
                     onClick={() => {
                       if (!isBacklog) return;
@@ -605,9 +629,9 @@ export function CardDetailModal({ onOpenReview, onApprove }: Props) {
                     )}
                   >
                     <MarkdownBody text={card.description} />
-                  </button>
+                  </Button>
                 ) : isBacklog ? (
-                  <button
+                  <Button variant="unstyled"
                     type="button"
                     onClick={() => {
                       setDescriptionDraft("");
@@ -619,7 +643,7 @@ export function CardDetailModal({ onOpenReview, onApprove }: Props) {
                     )}
                   >
                     Click to add a description…
-                  </button>
+                  </Button>
                 ) : (
                   <div className="text-[12px] text-fg-2 italic">
                     No description.
@@ -748,7 +772,7 @@ export function CardDetailModal({ onOpenReview, onApprove }: Props) {
               the old `overflow-hidden` (which would have clipped the
               bottom section silently). */}
           {!islandOpen ? (
-            <button
+            <Button variant="unstyled"
               type="button"
               onClick={() => setIslandOpen(true)}
               className={cn(
@@ -763,7 +787,7 @@ export function CardDetailModal({ onOpenReview, onApprove }: Props) {
               aria-label="Show details panel"
             >
               {I.sidebarRight}
-            </button>
+            </Button>
           ) : null}
           <aside
             className={cn(
@@ -787,7 +811,7 @@ export function CardDetailModal({ onOpenReview, onApprove }: Props) {
               <IslandSection
                 title="Project"
                 action={
-                  <button
+                  <Button variant="unstyled"
                     type="button"
                     onClick={() => setIslandOpen(false)}
                     className={cn(
@@ -799,7 +823,7 @@ export function CardDetailModal({ onOpenReview, onApprove }: Props) {
                     aria-label="Hide details panel"
                   >
                     {I.x}
-                  </button>
+                  </Button>
                 }
               >
                 <Field label="Repo">{project?.name ?? "—"}</Field>
@@ -898,7 +922,7 @@ export function CardDetailModal({ onOpenReview, onApprove }: Props) {
                   {isBacklog ? (
                     <ChipPopover<boolean>
                       label=""
-                      value={card.fastMode}
+                      value={Boolean(card.fastMode)}
                       options={FAST_MODE_OPTIONS}
                       onChange={(v) =>
                         void updateCard(card.id, { fastMode: v })
@@ -907,7 +931,7 @@ export function CardDetailModal({ onOpenReview, onApprove }: Props) {
                     />
                   ) : (
                     <span className="text-[11px] text-fg-1 font-mono">
-                      {card.fastMode ? "fast" : "standard"}
+                      {card.fastMode ? "Fast" : "Standard"}
                     </span>
                   )}
                 </div>
@@ -936,27 +960,27 @@ export function CardDetailModal({ onOpenReview, onApprove }: Props) {
                   {card.prUrl ? (
                     <div className="mt-1 flex flex-col gap-1.5">
                       {isDone ? (
-                        <button
+                        <Button variant="unstyled"
                           type="button"
                           onClick={openPr}
                           className={cn(
                             "h-7 w-full inline-flex items-center justify-center rounded-[5px] px-2",
-                            "text-[11px] font-medium bg-accent text-white",
-                            "hover:brightness-110 active:brightness-95",
+                            "text-[11px] font-medium !bg-accent !bg-none text-white",
+                            "hover:!bg-accent hover:!bg-none active:!bg-accent active:!bg-none",
                           )}
                           title="Open PR in browser"
                         >
                           Open PR
-                        </button>
+                        </Button>
                       ) : null}
-                      <button
+                      <Button variant="unstyled"
                         type="button"
                         onClick={openPr}
                         className="text-[11px] text-accent hover:underline text-left truncate font-mono"
                         title="Open PR in browser"
                       >
                         {card.prUrl}
-                      </button>
+                      </Button>
                     </div>
                   ) : null}
                 </IslandSection>
@@ -1019,6 +1043,8 @@ type KebabItem = {
   label: string;
   onClick: () => void | Promise<void>;
   danger?: boolean;
+  disabled?: boolean;
+  icon?: ReactNode;
 };
 
 /**
@@ -1027,97 +1053,65 @@ type KebabItem = {
  * click + Escape.
  */
 function KebabMenu({ items }: { items: KebabItem[] }) {
-  const [open, setOpen] = useState(false);
-  const [anchor, setAnchor] = useState<{ top: number; right: number } | null>(
-    null,
-  );
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const menuRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    if (triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect();
-      setAnchor({
-        top: rect.bottom + 4,
-        right: window.innerWidth - rect.right,
-      });
-    }
-    function onDocClick(e: MouseEvent) {
-      const target = e.target as Node | null;
-      const insideTrigger =
-        triggerRef.current && target && triggerRef.current.contains(target);
-      const insideMenu =
-        menuRef.current && target && menuRef.current.contains(target);
-      if (!insideTrigger && !insideMenu) setOpen(false);
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("mousedown", onDocClick);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDocClick);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
   if (items.length === 0) return null;
 
   return (
-    <>
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        title="More actions"
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="unstyled"
+          type="button"
+          title="More actions"
+          className={cn(
+            "h-7 w-7 grid place-items-center rounded-[5px] border border-bd-2",
+            "text-fg-1 bg-transparent transition-colors duration-100",
+            "hover:bg-bg-hover hover:border-bd-1",
+            "data-[state=open]:bg-bg-2 data-[state=open]:border-bd-1",
+            "focus:outline-none focus-visible:outline-none focus-visible:ring-0",
+          )}
+        >
+          <span className="text-[14px] leading-none">⋯</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        sideOffset={3}
         className={cn(
-          "h-7 w-7 grid place-items-center rounded-[5px] border border-bd-2",
-          "text-fg-1 bg-transparent transition-colors duration-100",
-          "hover:bg-bg-hover hover:border-bd-1",
-          open && "bg-bg-2 border-bd-1",
+          "min-w-[188px] border border-bd-1 bg-bg-1 p-1 text-fg-1",
+          "rounded-[7px] shadow-[0_14px_36px_rgba(0,0,0,0.42)]",
+          "outline-none ring-0 focus:outline-none focus-visible:outline-none",
         )}
       >
-        <span className="text-[14px] leading-none">⋯</span>
-      </button>
-      {open && anchor
-        ? createPortal(
-            <div
-              ref={menuRef}
-              style={{
-                position: "fixed",
-                top: anchor.top,
-                right: anchor.right,
-                minWidth: 180,
-              }}
-              className={cn(
-                "z-[1000] bg-bg-1 border border-bd-1 rounded-[6px]",
-                "shadow-[0_12px_32px_rgba(0,0,0,0.5)] py-1",
-              )}
-            >
-              {items.map((item, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={async () => {
-                    setOpen(false);
-                    await item.onClick();
-                  }}
-                  className={cn(
-                    "w-full text-left px-3 py-1.5 text-[12px]",
-                    item.danger
-                      ? "text-diff-del-mark hover:text-[color:color-mix(in_oklab,var(--diff-del-mark)_70%,white)] hover:bg-[color-mix(in_oklab,var(--diff-del-mark)_12%,transparent)]"
-                      : "text-fg-1 hover:bg-bg-hover hover:text-fg-0",
-                  )}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>,
-            document.body,
-          )
-        : null}
-    </>
+        {items.map((item, i) => (
+          <DropdownMenuItem
+            key={i}
+            disabled={item.disabled}
+            variant={item.danger ? "destructive" : "default"}
+            onSelect={(event) => {
+              if (item.disabled) {
+                event.preventDefault();
+                return;
+              }
+              void item.onClick();
+            }}
+            className={cn(
+              "h-8 gap-2 rounded-[5px] px-2.5 text-[12px]",
+              "focus:bg-bg-hover focus:text-fg-0",
+              item.danger &&
+                "text-diff-del-mark focus:bg-[color-mix(in_oklab,var(--diff-del-mark)_8%,transparent)] focus:text-diff-del-mark",
+            )}
+          >
+            {item.icon ? (
+              <span className="w-4 shrink-0 grid place-items-center text-[12px]">
+                {item.icon}
+              </span>
+            ) : (
+              <span className="w-4 shrink-0" />
+            )}
+            <span className="truncate">{item.label}</span>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -1209,7 +1203,7 @@ function CopyableField({
   return (
     <div className="flex items-center justify-between gap-2 text-[11.5px]">
       <span className="text-fg-3 shrink-0">{label}</span>
-      <button
+      <Button variant="unstyled"
         type="button"
         onClick={copy}
         title={`${value}\nClick to copy`}
@@ -1220,7 +1214,7 @@ function CopyableField({
         )}
       >
         {value}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -1239,22 +1233,24 @@ function HeaderBtn({
   icon?: ReactNode;
 }) {
   return (
-    <button
+    <Button
       type="button"
+      variant="unstyled"
+      size="sm"
       onClick={onClick}
       disabled={disabled}
       className={cn(
         "h-7 px-2.5 rounded-[5px] inline-flex items-center gap-1.5",
-        "text-[11.5px] border transition-colors duration-100 shrink-0",
+        "text-[11.5px] border shrink-0",
         primary
-          ? "bg-accent text-accent-fg border-accent hover:opacity-90"
+          ? "!bg-accent !bg-none text-accent-fg border-0 cursor-pointer hover:!bg-accent hover:!bg-none"
           : "bg-transparent text-fg-1 border-bd-2 hover:bg-bg-hover hover:border-bd-1",
         disabled && "opacity-50 cursor-not-allowed hover:bg-transparent",
       )}
     >
       {icon}
       <span>{children}</span>
-    </button>
+    </Button>
   );
 }
 
@@ -1315,7 +1311,7 @@ function ChatBubble({
           // Only fade in on hover so the header stays calm at rest, but
           // stays fully visible right after a copy so the confirmation
           // doesn't disappear before the user reads it.
-          <button
+          <Button variant="unstyled"
             type="button"
             onClick={handleCopy}
             className={cn(
@@ -1331,7 +1327,7 @@ function ChatBubble({
             title="Copy bubble contents"
           >
             {copied ? "Copied" : "Copy"}
-          </button>
+          </Button>
         ) : null}
       </div>
       {/*
@@ -1559,7 +1555,7 @@ const RunTurn = memo(function RunTurn({
           {/* Toggle works for running runs too — clicking expands the
               live stream. Default collapsed even mid-run (see useState
               above) keeps the bubble compact. */}
-          <button
+          <Button variant="unstyled"
             type="button"
             onClick={handleToggle}
             className={cn(
@@ -1568,7 +1564,7 @@ const RunTurn = memo(function RunTurn({
             )}
           >
             {expanded ? "Hide output" : "View output"}
-          </button>
+          </Button>
         </div>
 
         {!expanded ? null : logs.length === 0 ? (
@@ -1634,14 +1630,14 @@ function RawLogsToggle({
   const [open, setOpen] = useState(!hidden);
   return (
     <div className="mt-2">
-      <button
+      <Button variant="unstyled"
         type="button"
         onClick={() => setOpen((o) => !o)}
         className="text-[10.5px] font-mono text-fg-3 hover:text-fg-1"
       >
         {open ? "▾ Hide raw output" : "▸ Show raw output"} ({logs.length} lines
         {fullText ? `, ${Math.round(fullText.length / 1024)}kb` : ""})
-      </button>
+      </Button>
       {open ? (
         <div
           className={cn(
@@ -1733,7 +1729,7 @@ function AttachmentThumb({
 
   return (
     <div className="relative group">
-      <button
+      <Button variant="unstyled"
         type="button"
         onClick={() => {
           // Open in the user's default app for that file type.
@@ -1761,8 +1757,8 @@ function AttachmentThumb({
             {ext}
           </span>
         )}
-      </button>
-      <button
+      </Button>
+      <Button variant="unstyled"
         type="button"
         onClick={(e) => {
           e.stopPropagation();
@@ -1787,7 +1783,7 @@ function AttachmentThumb({
         )}
       >
         ×
-      </button>
+      </Button>
       <div className="text-[10px] text-fg-3 mt-1 truncate w-[80px]">
         {attachment.filename}
       </div>
@@ -1815,29 +1811,14 @@ function ScriptRunPicker({
     null,
   );
 
+  useDismissableLayer(open, setOpen, [triggerRef, menuRef]);
+
   useEffect(() => {
     if (!open) return;
     if (triggerRef.current) {
       const r = triggerRef.current.getBoundingClientRect();
       setAnchor({ top: r.bottom + 4, right: window.innerWidth - r.right });
     }
-    function onDocClick(e: MouseEvent) {
-      const t = e.target as Node | null;
-      const insideTrigger =
-        triggerRef.current && t && triggerRef.current.contains(t);
-      const insideMenu =
-        menuRef.current && t && menuRef.current.contains(t);
-      if (!insideTrigger && !insideMenu) setOpen(false);
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("mousedown", onDocClick);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDocClick);
-      document.removeEventListener("keydown", onKey);
-    };
   }, [open]);
 
   const first = scripts[0];
@@ -1845,7 +1826,7 @@ function ScriptRunPicker({
 
   if (scripts.length === 1) {
     return (
-      <button
+      <Button variant="unstyled"
         type="button"
         onClick={() => onRun(first)}
         title={`Run \`${first.command}\` in the worktree`}
@@ -1859,14 +1840,14 @@ function ScriptRunPicker({
           {iconNodeFor(first.icon)}
         </span>
         <span>{first.title}</span>
-      </button>
+      </Button>
     );
   }
 
   return (
     <>
       <div className="inline-flex items-stretch h-7 rounded-[5px] border border-bd-2 overflow-hidden shrink-0">
-        <button
+        <Button variant="unstyled"
           type="button"
           onClick={() => onRun(first)}
           title={`Run \`${first.command}\` in the worktree`}
@@ -1880,8 +1861,8 @@ function ScriptRunPicker({
             {iconNodeFor(first.icon)}
           </span>
           <span>{first.title}</span>
-        </button>
-        <button
+        </Button>
+        <Button variant="unstyled"
           ref={triggerRef}
           type="button"
           onClick={() => setOpen((o) => !o)}
@@ -1903,7 +1884,7 @@ function ScriptRunPicker({
           >
             {I.chevron}
           </span>
-        </button>
+        </Button>
       </div>
       {open && anchor
         ? createPortal(
@@ -1921,7 +1902,7 @@ function ScriptRunPicker({
               )}
             >
               {scripts.map((s) => (
-                <button
+                <Button variant="unstyled"
                   key={s.id}
                   type="button"
                   onClick={() => {
@@ -1941,7 +1922,7 @@ function ScriptRunPicker({
                   <span className="text-[10px] font-mono text-fg-3 truncate max-w-[100px]">
                     {s.command}
                   </span>
-                </button>
+                </Button>
               ))}
             </div>,
             document.body,
@@ -2046,7 +2027,7 @@ function ChatComposer({
         />
 
         <div className="flex items-center gap-1.5 px-2 pb-2">
-          <button
+          <Button variant="unstyled"
             type="button"
             onClick={onAttachClick}
             title="Attach files (or drag-drop / ⌘V to paste)"
@@ -2058,11 +2039,11 @@ function ChatComposer({
             )}
           >
             {I.paperclip}
-          </button>
+          </Button>
           <span className="flex-1 text-[10.5px] font-mono text-fg-3">
             ⌘ ↵ · {hint}
           </span>
-          <button
+          <Button variant="unstyled"
             type="button"
             onClick={onSend}
             disabled={!canSend}
@@ -2071,12 +2052,12 @@ function ChatComposer({
               "h-7 w-7 grid place-items-center rounded-full",
               "transition-colors duration-100",
               canSend
-                ? "bg-accent text-accent-fg hover:opacity-90"
+                ? "!bg-accent !bg-none text-accent-fg hover:!bg-accent hover:!bg-none"
                 : "bg-bg-2 text-fg-3 cursor-not-allowed",
             )}
           >
             {I.send}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -2112,14 +2093,14 @@ function ComposerFileChip({
         </span>
       )}
       <span className="truncate max-w-[140px] font-mono">{file.name}</span>
-      <button
+      <Button variant="unstyled"
         type="button"
         onClick={onRemove}
         title="Remove"
         className="text-fg-3 hover:text-diff-del-mark text-[12px] leading-none"
       >
         ×
-      </button>
+      </Button>
     </div>
   );
 }

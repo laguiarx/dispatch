@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { BTN_GHOST, BTN_PRIMARY } from "@/lib/btn";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { I } from "./icons";
 import { Spinner } from "./spinner";
@@ -109,13 +109,13 @@ export function HunkStagePopover({
         >
           {filePath}
         </div>
-        <button
+        <Button variant="unstyled"
           className="grid place-items-center w-[22px] h-[22px] rounded text-fg-3 hover:bg-bg-hover hover:text-fg-0"
           onClick={onCancel}
           title="Cancel (Esc)"
         >
           {I.x}
-        </button>
+        </Button>
       </div>
       <div className="relative">
         <textarea
@@ -141,7 +141,7 @@ export function HunkStagePopover({
           autoComplete="off"
           disabled={busy || generating}
         />
-        <button
+        <Button variant="unstyled"
           type="button"
           className={GENERATE_ICON_BUTTON}
           onClick={generate}
@@ -160,7 +160,7 @@ export function HunkStagePopover({
               I.sparkles
             )}
           </span>
-        </button>
+        </Button>
       </div>
       <div className="flex flex-col gap-2 text-[11px]">
         <div className="font-mono text-fg-2 text-[11px] leading-[1.4]">
@@ -171,27 +171,30 @@ export function HunkStagePopover({
               : "Type a message to commit, or stage only."}
         </div>
         <div className="flex flex-wrap justify-end items-center gap-1.5">
-          <button
-            className={BTN_GHOST}
+          <Button
+            variant="outline"
+            size="sm"
             onClick={onCancel}
             disabled={busy}
           >
             Cancel
-          </button>
-          <button
-            className={BTN_GHOST}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={onStageOnly}
             disabled={busy || generating}
           >
             {stageLabel}
-          </button>
-          <button
-            className={BTN_PRIMARY}
+          </Button>
+          <Button
+            variant="default"
+            size="sm"
             onClick={() => onStageAndCommit(message.trim())}
             disabled={busy || generating || !message.trim()}
           >
             {commitLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

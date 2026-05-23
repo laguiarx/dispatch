@@ -6,7 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { BTN_GHOST } from "@/lib/btn";
+import { Button } from "@/components/ui/button";
 import { useRepoStore } from "@/features/repository/repository.store";
 import {
   getFileDiff,
@@ -618,7 +618,7 @@ export function DiffPane() {
         </div>
         <div className="flex items-center gap-1.5">
           <div className={SEG_GROUP}>
-            <button
+            <Button variant="unstyled"
               type="button"
               className={cn(SEG_BTN_BASE, diffMode === "sbs" && SEG_BTN_ACTIVE)}
               onClick={() => setDiffMode("sbs")}
@@ -626,8 +626,8 @@ export function DiffPane() {
               aria-label="Side-by-side"
             >
               {I.splitView}
-            </button>
-            <button
+            </Button>
+            <Button variant="unstyled"
               type="button"
               className={cn(SEG_BTN_BASE, diffMode === "inline" && SEG_BTN_ACTIVE)}
               onClick={() => setDiffMode("inline")}
@@ -635,8 +635,8 @@ export function DiffPane() {
               aria-label="Inline"
             >
               {I.inlineView}
-            </button>
-            <button
+            </Button>
+            <Button variant="unstyled"
               type="button"
               className={cn(SEG_BTN_BASE, diffMode === "edit" && SEG_BTN_ACTIVE)}
               onClick={() => setDiffMode("edit")}
@@ -644,7 +644,7 @@ export function DiffPane() {
               aria-label="Edit"
             >
               {I.edit}
-            </button>
+            </Button>
           </div>
           {/* Diff expansion mode — full file vs hunks only. Used to live
               only in Preferences; surfacing it inline lets the user bail
@@ -653,7 +653,7 @@ export function DiffPane() {
               Previous/next-file (↑/↓) buttons were removed from here —
               ⌥↑ / ⌥↓ already cover that and the icons added noise. */}
           <div className={SEG_GROUP}>
-            <button
+            <Button variant="unstyled"
               type="button"
               className={cn(
                 SEG_BTN_BASE,
@@ -664,8 +664,8 @@ export function DiffPane() {
               aria-label="Full file"
             >
               {I.fileFull}
-            </button>
-            <button
+            </Button>
+            <Button variant="unstyled"
               type="button"
               className={cn(
                 SEG_BTN_BASE,
@@ -676,7 +676,7 @@ export function DiffPane() {
               aria-label="Hunks only"
             >
               {I.fileHunks}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -1002,9 +1002,10 @@ function FilePane({
                 Disk reports 0 bytes for{" "}
                 <code className="font-mono">{filePath}</code>.
               </span>
-              <button
+              <Button
                 type="button"
-                className={BTN_GHOST}
+                variant="outline"
+                size="sm"
                 onClick={() => {
                   readWorkingFile(repoPath, filePath)
                     .then((content) =>
@@ -1020,7 +1021,7 @@ function FilePane({
                 }}
               >
                 Re-read from disk
-              </button>
+              </Button>
             </div>
           ) : (
             <DiffEditor
@@ -1043,7 +1044,7 @@ function FilePane({
         <span className="flex-1" />
         {isBinary ? null : (
           <>
-            <button
+            <Button variant="unstyled"
               type="button"
               className={FOOTER_ACTION}
               title="Discard the in-memory buffer and re-read this file from disk"
@@ -1062,7 +1063,7 @@ function FilePane({
               }}
             >
               Re-read from disk
-            </button>
+            </Button>
             <span>·</span>
           </>
         )}

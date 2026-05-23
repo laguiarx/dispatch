@@ -1,3 +1,6 @@
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -497,4 +500,52 @@ textarea::placeholder {
 }
 :root[data-ui-zoom] .text-\[18px\] {
   font-size: calc(18px * var(--ui-text-zoom));
+}
+
+@layer base {
+  .theme {
+    --font-heading: var(--font-sans);
+  }
+  :root {
+    --background: var(--bg-0);
+    --foreground: var(--fg-0);
+    --card: var(--bg-1);
+    --card-foreground: var(--fg-0);
+    --popover: var(--bg-1);
+    --popover-foreground: var(--fg-0);
+    --primary: var(--accent);
+    --primary-foreground: var(--accent-fg);
+    --secondary: var(--bg-2);
+    --secondary-foreground: var(--fg-1);
+    --muted: var(--bg-2);
+    --muted-foreground: var(--fg-2);
+    --accent-foreground: var(--accent-fg);
+    --destructive: var(--diff-del-mark);
+    --border: var(--bd-2);
+    --input: var(--bd-2);
+    --ring: var(--accent);
+    --chart-1: var(--accent);
+    --chart-2: var(--git-add);
+    --chart-3: var(--git-mod);
+    --chart-4: var(--git-ren);
+    --chart-5: var(--git-del);
+    --radius: 0.5rem;
+    --sidebar: var(--bg-1);
+    --sidebar-foreground: var(--fg-0);
+    --sidebar-primary: var(--accent);
+    --sidebar-primary-foreground: var(--accent-fg);
+    --sidebar-accent: var(--bg-2);
+    --sidebar-accent-foreground: var(--fg-0);
+    --sidebar-border: var(--bd-2);
+    --sidebar-ring: var(--accent);
+  }
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
 }

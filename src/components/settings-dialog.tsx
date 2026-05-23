@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useRepoStore } from "@/features/repository/repository.store";
-import { BTN_GHOST } from "@/lib/btn";
+import { Button } from "@/components/ui/button";
 import { sendTestNotification } from "@/lib/notify";
 import type { DiffExpansion, SearchView, Settings } from "@/lib/paths";
 import {
@@ -125,13 +125,13 @@ export function SettingsDialog() {
           </span>
           <Kbd>⌘,</Kbd>
           <span className="flex-1" />
-          <button
+          <Button variant="unstyled"
             className="w-[22px] h-[22px] grid place-items-center rounded-[4px] text-fg-3 bg-transparent border-0 cursor-pointer hover:bg-bg-hover hover:text-fg-0"
             onClick={() => close(false)}
             title="Close"
           >
             {I.x}
-          </button>
+          </Button>
         </div>
 
         <div className="grid grid-cols-[200px_1fr] flex-1 min-h-0">
@@ -140,7 +140,7 @@ export function SettingsDialog() {
             className="flex flex-col gap-px px-2 py-3 border-r border-bd-1 bg-bg-0 overflow-y-auto"
           >
             {TABS.map((t) => (
-              <button
+              <Button variant="unstyled"
                 key={t.id}
                 type="button"
                 className={cn(
@@ -173,7 +173,7 @@ export function SettingsDialog() {
                     {t.hint}
                   </span>
                 </span>
-              </button>
+              </Button>
             ))}
           </nav>
 
@@ -205,7 +205,7 @@ export function SettingsDialog() {
           {/* Was a dedicated topbar icon; moved here so the topbar isn't
               cluttered and so the "rarely-needed reference" lives next to
               other rarely-needed reference material. */}
-          <button
+          <Button variant="unstyled"
             type="button"
             className={cn(
               "inline-flex items-center gap-1.5 px-2 py-1 rounded text-[11px]",
@@ -219,7 +219,7 @@ export function SettingsDialog() {
           >
             {I.keyboard}
             <span>Keyboard shortcuts</span>
-          </button>
+          </Button>
         </div>
       </div>
     </Overlay>
@@ -258,7 +258,7 @@ function AppearanceSection() {
         <div className={ROW_LABEL}>Theme</div>
         <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2">
           {THEME_PRESETS.map((t) => (
-            <button
+            <Button variant="unstyled"
               key={t.id}
               className={cn(
                 "flex flex-col gap-1 px-3 py-2.5 text-left rounded-2 border",
@@ -283,7 +283,7 @@ function AppearanceSection() {
                 {t.label}
               </span>
               <span className="text-[10.5px] text-fg-2">{t.hint}</span>
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -308,14 +308,14 @@ function FontsSection() {
         <div className={ROW_LABEL}>UI font</div>
         <div className={SEG_GROUP}>
           {UI_FONTS.map((f) => (
-            <button
+            <Button variant="unstyled"
               key={f.id}
               className={cn(SEG_BTN, settings.uiFont === f.id && SEG_BTN_ACTIVE)}
               onClick={() => setUiFont(f.id)}
               type="button"
             >
               {f.label}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -338,14 +338,14 @@ function FontsSection() {
         <div className={ROW_LABEL}>Code font</div>
         <div className={SEG_GROUP}>
           {CODE_FONTS.map((f) => (
-            <button
+            <Button variant="unstyled"
               key={f.id}
               className={cn(SEG_BTN, settings.codeFont === f.id && SEG_BTN_ACTIVE)}
               onClick={() => setCodeFont(f.id)}
               type="button"
             >
               {f.label}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -418,7 +418,7 @@ function CustomColorsSection() {
                 onChange={(e) => setCustomColor(c.id, e.target.value)}
               />
               {settings.customColors[c.id] ? (
-                <button
+                <Button variant="unstyled"
                   type="button"
                   className={cn(
                     "grid place-items-center w-[22px] h-[22px] rounded",
@@ -429,20 +429,22 @@ function CustomColorsSection() {
                   title="Reset to theme default"
                 >
                   {I.undo}
-                </button>
+                </Button>
               ) : null}
             </span>
           </label>
         ))}
       </div>
       {hasOverrides ? (
-        <button
+        <Button
           type="button"
-          className={cn(BTN_GHOST, "self-start mt-1")}
+          variant="outline"
+          size="sm"
+          className="self-start mt-1"
           onClick={resetCustomColors}
         >
           Reset all to theme defaults
-        </button>
+        </Button>
       ) : null}
     </section>
   );
@@ -464,7 +466,7 @@ function DiffSection() {
         <div className={ROW_LABEL}>Default view</div>
         <div className={SEG_GROUP}>
           {EXPANSIONS.map((e) => (
-            <button
+            <Button variant="unstyled"
               key={e.id}
               className={cn(
                 SEG_BTN,
@@ -474,7 +476,7 @@ function DiffSection() {
               title={e.desc}
             >
               {e.label}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -482,7 +484,7 @@ function DiffSection() {
         <div className={ROW_LABEL}>Search results</div>
         <div className={SEG_GROUP}>
           {SEARCH_VIEWS.map((v) => (
-            <button
+            <Button variant="unstyled"
               key={v.id}
               className={cn(
                 SEG_BTN,
@@ -492,7 +494,7 @@ function DiffSection() {
               title={v.desc}
             >
               {v.label}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -584,14 +586,14 @@ function AiSection() {
           <div className={ROW_LABEL}>Preferred CLI</div>
           <div className={SEG_GROUP}>
             {available.map((c) => (
-              <button
+              <Button variant="unstyled"
                 key={c.id}
                 className={cn(SEG_BTN, preferred === c.id && SEG_BTN_ACTIVE)}
                 onClick={() => setPreferred(c.id)}
                 title={c.version || c.name}
               >
                 {c.name}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -742,9 +744,11 @@ function NotificationsSection() {
             current toggles.
           </div>
         </div>
-        <button
+        <Button
           type="button"
-          className={cn(BTN_GHOST, "shrink-0")}
+          variant="outline"
+          size="sm"
+          className="shrink-0"
           disabled={!enabled || testing}
           onClick={async () => {
             setTesting(true);
@@ -785,7 +789,7 @@ function NotificationsSection() {
           }}
         >
           {testing ? "Sending…" : "Send test"}
-        </button>
+        </Button>
       </div>
     </section>
   );

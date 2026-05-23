@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
 
 import { cn } from "@/lib/utils";
 import { Overlay } from "@/components/overlay";
@@ -130,14 +131,14 @@ export function ProjectSetupDialog({
             Setup · {project.name}
           </span>
           <span className="flex-1" />
-          <button
+          <Button variant="unstyled"
             type="button"
             onClick={onClose}
             title="Close"
             className="w-[22px] h-[22px] grid place-items-center rounded-[4px] text-fg-3 bg-transparent border-0 cursor-pointer hover:bg-bg-hover hover:text-fg-0"
           >
             {I.x}
-          </button>
+          </Button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4">
@@ -187,7 +188,7 @@ export function ProjectSetupDialog({
               {dirty ? (
                 <span className="text-[10.5px] text-accent">unsaved</span>
               ) : null}
-              <button
+              <Button variant="unstyled"
                 type="button"
                 onClick={runAiSuggest}
                 disabled={aiLoading}
@@ -206,7 +207,7 @@ export function ProjectSetupDialog({
                   : aiFilled
                     ? "Regenerate"
                     : "Suggest with AI"}
-              </button>
+              </Button>
             </div>
             <textarea
               autoFocus
@@ -247,7 +248,7 @@ export function ProjectSetupDialog({
             <Kbd>↵</Kbd> save & close
           </span>
           <span className="flex-1" />
-          <button
+          <Button variant="unstyled"
             type="button"
             onClick={onClose}
             className={cn(
@@ -257,19 +258,19 @@ export function ProjectSetupDialog({
             )}
           >
             Cancel <Kbd>Esc</Kbd>
-          </button>
-          <button
+          </Button>
+          <Button variant="unstyled"
             type="button"
             onClick={save}
             disabled={saving}
             className={cn(
               "inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-medium",
-              "bg-accent text-accent-fg border-0",
-              "hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed",
+              "!bg-accent !bg-none text-accent-fg border-0",
+              "hover:!bg-accent hover:!bg-none disabled:opacity-40 disabled:cursor-not-allowed",
             )}
           >
             {saving ? "Saving…" : dirty ? "Save & close" : "Close"}
-          </button>
+          </Button>
         </div>
       </div>
     </Overlay>

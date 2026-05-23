@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { I, type IconName } from "./icons";
+import { Button } from "@/components/ui/button";
 
 export type HunkPrimaryAction = {
   kind: "stage" | "unstage";
@@ -48,7 +49,7 @@ export function HunkActionBar({ hunkIdx, actions }: Props) {
       )}
     >
       {actions.revert ? (
-        <button
+        <Button variant="unstyled"
           className={cn(
             icon,
             // Danger variant — accent red on hover.
@@ -59,9 +60,9 @@ export function HunkActionBar({ hunkIdx, actions }: Props) {
           type="button"
         >
           {I.undo}
-        </button>
+        </Button>
       ) : null}
-      <button
+      <Button variant="unstyled"
         className={cn(
           icon,
           // Primary variant — accent-soft on hover.
@@ -72,7 +73,7 @@ export function HunkActionBar({ hunkIdx, actions }: Props) {
         type="button"
       >
         {I[PRIMARY_ICON[actions.primary.kind]]}
-      </button>
+      </Button>
     </div>
   );
 }

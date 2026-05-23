@@ -1,0 +1,32 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "ignorePatterns": [
+    "src/components/ui/**",
+    "src/hooks/use-mobile.ts"
+  ],
+  "ignoreDependencies": [
+    "@base-ui/react",
+    "class-variance-authority",
+    "cmdk",
+    "date-fns",
+    "embla-carousel-react",
+    "input-otp",
+    "lucide-react",
+    "next-themes",
+    "radix-ui",
+    "react-day-picker",
+    "react-resizable-panels",
+    "recharts",
+    "sonner",
+    "vaul"
+  ],
+  "rules": {
+    "duplicate-exports": "warn"
+  },
+  "health": {
+    "maxCyclomatic": 100,
+    "maxCognitive": 100,
+    "maxCrap": 10000
+  },
+  "dynamicallyLoaded": []
+}

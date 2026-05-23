@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { I, type IconName } from "./icons";
 import { Spinner } from "./spinner";
 import { CHIP, Kbd, splitShortcut } from "./kbd";
+import { Button } from "@/components/ui/button";
 
 export type CommandItem = {
   id: string;
@@ -16,7 +17,7 @@ export type CommandItem = {
   run: () => void;
 };
 
-export type PaletteMode = "files" | "commands";
+type PaletteMode = "files" | "commands";
 
 type Props = {
   open: boolean;
@@ -184,13 +185,13 @@ export function CommandPalette({
 
   return (
     <div
-      // Same backdrop look as Overlay (dark scrim + blur); reproduced
+      // Same dry backdrop look as Overlay; reproduced
       // inline because CommandPalette anchors higher up the viewport than
       // Overlay's default `pt-[70px]`. Light theme gets a lighter scrim
       // via the `[:root[data-theme='light']_&]` override.
       className={cn(
         "absolute inset-0 z-50 grid justify-items-center items-start pt-[110px]",
-        "bg-[rgba(2,3,5,0.55)] backdrop-blur-[4px]",
+        "bg-[rgba(2,3,5,0.62)]",
         "[:root[data-theme='light']_&]:bg-[rgba(40,42,60,0.3)]",
       )}
       onMouseDown={(e) => {
@@ -262,7 +263,7 @@ export function CommandPalette({
                   const myIdx = runningIdx;
                   runningIdx++;
                   return (
-                    <button
+                    <Button variant="unstyled"
                       key={item.id}
                       // Marker for the scroll-into-view effect above; the
                       // querySelector targets [data-palette-active].
@@ -339,7 +340,7 @@ export function CommandPalette({
                       ) : (
                         <span />
                       )}
-                    </button>
+                    </Button>
                   );
                 })}
               </div>
@@ -363,7 +364,7 @@ export function CommandPalette({
           </span>
           <span className="flex-1" />
           {allowFilesMode ? (
-            <button
+            <Button variant="unstyled"
               className={cn(
                 "inline-flex items-center gap-0.5 text-[11px] text-fg-2",
                 "px-1.5 py-0.5 rounded hover:bg-bg-hover hover:text-fg-0",
@@ -378,7 +379,7 @@ export function CommandPalette({
               }
             >
               <Kbd>{mode === "files" ? "⌘⇧P" : "⌘P"}</Kbd>
-            </button>
+            </Button>
           ) : null}
           <span>
             {showResults

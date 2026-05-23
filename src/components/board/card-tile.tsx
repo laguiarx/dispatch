@@ -1,6 +1,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { Button } from "@/components/ui/button";
 
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/spinner";
@@ -23,6 +24,14 @@ type Props = {
 // sent back to To Do (retry) or Backlog (abandon). In Progress is
 // added dynamically when the card has no live agent (crash recovery).
 const DRAGGABLE_COLUMNS = new Set<BoardColumnId>(["backlog", "todo", "review"]);
+
+const CARD_ACCENT_BY_COLUMN: Record<BoardColumnId, string> = {
+  backlog: "bg-fg-3",
+  todo: "bg-accent-hi",
+  in_progress: "bg-accent",
+  review: "bg-git-mod",
+  done: "bg-diff-add-mark",
+};
 
 /**
  * Sortable card tile rendered inside a column. The visual is shared with
@@ -105,37 +114,61 @@ function CardTileVisual({
   const projectChip = useBoardStore(
     (s) => s.projectsById[card.projectId]?.name ?? null,
   );
+  const priorityLabel =
+    card.priority === "high" ? "High" : card.priority === "med" ? "Med" : "Low";
+  const priorityClass =
+    card.priority === "high"
+      ? "text-diff-del-mark border-diff-del-mark/30 bg-[color-mix(in_oklab,var(--diff-del-mark)_8%,transparent)]"
+      : card.priority === "med"
+        ? "text-accent-hi border-accent/30 bg-accent-softer"
+        : "text-fg-2 border-bd-2 bg-bg-2";
 
   return (
     <div
       className={cn(
-        "group relative rounded-[6px] border border-bd-2 bg-bg-1 p-2.5",
+        "group relative overflow-hidden rounded-[8px] border border-bd-2 bg-bg-1 p-3",
+        "shadow-[0_1px_0_rgba(255,255,255,0.025)]",
         interactive
           ? draggable
-            ? "cursor-grab hover:border-bd-1 hover:bg-bg-2 transition-colors"
-            : "cursor-pointer hover:border-bd-1 hover:bg-bg-2 transition-colors"
+            ? "cursor-grab hover:border-bd-3 hover:bg-bg-2 transition-[background,border-color,box-shadow,transform] hover:shadow-[0_8px_26px_rgba(0,0,0,0.18)]"
+            : "cursor-pointer hover:border-bd-3 hover:bg-bg-2 transition-[background,border-color,box-shadow,transform] hover:shadow-[0_8px_26px_rgba(0,0,0,0.18)]"
           : "shadow-[0_12px_32px_rgba(0,0,0,0.5)]",
-        busy && "border-accent/40",
+        busy && "border-accent/40 bg-[color-mix(in_oklab,var(--accent)_6%,var(--bg-1))]",
         // Setup failed → red border + soft red bg so the user can spot
         // the stuck card in a busy To Do column.
         setupFailed &&
           "border-diff-del-mark/50 bg-[color-mix(in_oklab,var(--diff-del-mark)_5%,transparent)]",
       )}
     >
+      <div
+        className={cn(
+          "absolute inset-x-0 top-0 h-px opacity-80",
+          CARD_ACCENT_BY_COLUMN[card.columnId],
+        )}
+      />
       <div className="flex items-start justify-between gap-2">
-        <div className="text-[12px] font-medium text-fg-0 leading-snug min-w-0">
+        <div className="min-w-0 flex-1">
           {card.taskNumber ? (
-            <span className="font-mono text-fg-3 mr-1.5">
+            <span
+              className={cn(
+                "inline-flex items-center h-4 px-1.5 rounded-[4px] mr-1.5 align-[1px]",
+                "font-mono text-[9.5px] text-fg-2 bg-bg-2 border border-bd-2",
+              )}
+            >
               T{card.taskNumber}
             </span>
           ) : null}
-          {card.title}
+          <span className="text-[12.5px] font-semibold text-fg-0 leading-snug">
+            {card.title}
+          </span>
         </div>
         {busy ? (
-          <Spinner className="w-3 h-3 shrink-0 mt-0.5" />
+          <div className="h-5 w-5 grid place-items-center rounded-[5px] bg-accent-softer border border-accent/25 shrink-0">
+            <Spinner className="w-3 h-3" />
+          </div>
         ) : setupFailed ? (
           <span
-            className="text-[9.5px] font-mono text-diff-del-mark shrink-0 mt-0.5"
+            className="text-[9.5px] font-mono text-diff-del-mark shrink-0 mt-0.5 rounded-[4px] border border-diff-del-mark/30 px-1.5 py-0.5"
             title="Setup script failed — check the Setup tab in the terminal. Drag the card to Backlog to clear."
           >
             setup ✗
@@ -143,29 +176,27 @@ function CardTileVisual({
         ) : null}
       </div>
       {card.description ? (
-        <div className="text-[11px] text-fg-2 mt-1 line-clamp-2">
+        <div className="text-[11px] text-fg-2 mt-2 leading-[1.35] line-clamp-3">
           {card.description}
         </div>
       ) : null}
-      <div className="flex items-center gap-1.5 mt-2 text-[10.5px] font-mono text-fg-2 flex-wrap">
+      <div className="flex items-center gap-1.5 mt-3 text-[10px] font-mono text-fg-2 flex-wrap">
         {projectChip ? (
-          <span className="px-1.5 py-px rounded-[3px] bg-bg-2 border border-bd-2 truncate max-w-[120px]">
+          <span className="h-5 inline-flex items-center px-1.5 rounded-[4px] bg-bg-2 border border-bd-2 truncate max-w-[128px]">
             {projectChip}
           </span>
         ) : null}
-        <span className="px-1.5 py-px rounded-[3px] bg-bg-2 border border-bd-2">
+        <span className="h-5 inline-flex items-center px-1.5 rounded-[4px] bg-bg-2 border border-bd-2">
           {card.agent}
         </span>
         <span
           className={cn(
-            "px-1.5 py-px rounded-[3px] border border-bd-2 bg-bg-2",
-            "inline-flex items-center gap-1 text-fg-2",
+            "h-5 px-1.5 rounded-[4px] border",
+            "inline-flex items-center gap-1",
+            priorityClass,
           )}
           title={`Priority: ${card.priority}`}
         >
-          {/* Border/text colors are uniform across priorities — only the
-              leading dot tints (gray / blue / red) so the chip itself
-              doesn't shout for attention on every card. */}
           <span
             className={cn(
               "text-[8px] leading-none",
@@ -180,18 +211,20 @@ function CardTileVisual({
               ? "●●●"
               : card.priority === "med"
                 ? "●●"
-                : "●"}
+              : "●"}
           </span>
-          {card.priority}
+          {priorityLabel}
         </span>
         {card.branchName ? (
-          <span className="truncate">{card.branchName}</span>
+          <span className="h-5 inline-flex items-center px-1.5 rounded-[4px] bg-bg-0/60 border border-bd-1 truncate max-w-full">
+            {card.branchName}
+          </span>
         ) : null}
         {card.prUrl ? (
           card.columnId === "done" ? (
-            <button
+            <Button variant="unstyled"
               type="button"
-              className="text-accent hover:underline"
+              className="h-5 inline-flex items-center px-1.5 rounded-[4px] text-accent bg-accent-softer border border-accent/25 hover:bg-accent-soft"
               title="Open PR in browser"
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {
@@ -201,9 +234,11 @@ function CardTileVisual({
               }}
             >
               Open PR ↗
-            </button>
+            </Button>
           ) : (
-            <span className="text-accent">PR ↗</span>
+            <span className="h-5 inline-flex items-center px-1.5 rounded-[4px] text-accent bg-accent-softer border border-accent/25">
+              PR ↗
+            </span>
           )
         ) : null}
       </div>

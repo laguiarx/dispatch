@@ -1,4 +1,4 @@
-import { BTN_DANGER, BTN_GHOST, BTN_PRIMARY } from "@/lib/btn";
+import { Button } from "@/components/ui/button";
 import { Overlay } from "./overlay";
 
 type Props = {
@@ -16,9 +16,7 @@ type Props = {
  * store's `setConfirm()` plumbing for discards, deletes, etc.
  *
  * Migrated from `.confirm-card` / `.confirm-title` / `.confirm-body` /
- * `.confirm-actions` rules. The `.primary-btn` / `.ghost-btn` /
- * `.danger-btn` button classes remain legacy until the "global buttons"
- * cleanup wave.
+ * `.confirm-actions` rules.
  */
 export function ConfirmDialog({
   open,
@@ -45,15 +43,16 @@ export function ConfirmDialog({
           {body}
         </div>
         <div className="flex justify-end gap-2 pt-1">
-          <button className={BTN_GHOST} onClick={onCancel}>
+          <Button variant="outline" size="sm" onClick={onCancel}>
             Cancel
-          </button>
-          <button
-            className={danger ? BTN_DANGER : BTN_PRIMARY}
+          </Button>
+          <Button
+            variant={danger ? "destructive" : "default"}
+            size="sm"
             onClick={onConfirm}
           >
             {confirmLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </Overlay>

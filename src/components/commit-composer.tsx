@@ -3,6 +3,7 @@ import { useRepoStore } from "@/features/repository/repository.store";
 import { I } from "./icons";
 import { Spinner } from "./spinner";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 /**
  * Shared style fragments for the composer. The split-button (Commit |
@@ -28,14 +29,14 @@ const WAND =
 const SPLIT = "relative inline-flex w-full";
 const SUBMIT =
   "inline-flex items-center justify-center gap-2 flex-1 h-[30px] px-3 " +
-  "rounded-l-2 bg-accent text-bg-0 border-0 text-[12px] font-medium cursor-pointer " +
-  "transition-[filter] duration-[120ms] hover:not-disabled:brightness-110 " +
+  "rounded-l-2 !bg-accent !bg-none text-bg-0 border-0 text-[12px] font-medium cursor-pointer " +
+  "transition-none hover:not-disabled:!bg-accent hover:not-disabled:!bg-none " +
   "disabled:bg-bg-3 disabled:text-fg-3 disabled:cursor-not-allowed " +
   "[&_[data-ai-spinner]]:w-3 [&_[data-ai-spinner]]:h-3";
 const CHEV_BASE =
   "inline-flex items-center justify-center h-[30px] w-7 ml-px rounded-r-2 " +
-  "bg-accent text-bg-0 border-0 cursor-pointer " +
-  "transition-[filter] duration-[120ms] hover:not-disabled:brightness-115 " +
+  "!bg-accent !bg-none text-bg-0 border-0 cursor-pointer " +
+  "transition-none hover:not-disabled:!bg-accent hover:not-disabled:!bg-none " +
   "disabled:bg-bg-3 disabled:text-fg-3 disabled:cursor-not-allowed " +
   "[&_[data-ai-spinner]]:w-3 [&_[data-ai-spinner]]:h-3";
 const CHEV_ACTIVE = "brightness-115";
@@ -163,7 +164,7 @@ export function CommitComposer() {
           autoCapitalize="off"
           autoCorrect="off"
         />
-        <button
+        <Button variant="unstyled"
           type="button"
           className={WAND}
           title="Draft commit message with AI"
@@ -171,12 +172,12 @@ export function CommitComposer() {
           disabled={!canGenerate}
         >
           {loading && draft === "" ? <Spinner /> : I.sparkles}
-        </button>
+        </Button>
       </div>
 
       <div className="flex">
         <div className={SPLIT} ref={menuWrapRef}>
-          <button
+          <Button variant="unstyled"
             type="button"
             className={SUBMIT}
             onClick={() => void runCommit()}
@@ -195,8 +196,8 @@ export function CommitComposer() {
                   : ""}
               </span>
             )}
-          </button>
-          <button
+          </Button>
+          <Button variant="unstyled"
             type="button"
             className={cn(CHEV_BASE, menuOpen && CHEV_ACTIVE)}
             onClick={() => setMenuOpen((o) => !o)}
@@ -215,11 +216,11 @@ export function CommitComposer() {
             ) : (
               I.chevron
             )}
-          </button>
+          </Button>
           {menuOpen ? (
             <div className={MENU} role="menu">
               <div className={MENU_SECTION}>Commit</div>
-              <button
+              <Button variant="unstyled"
                 role="menuitem"
                 className={MENU_ITEM_BASE}
                 onClick={() => {
@@ -230,8 +231,8 @@ export function CommitComposer() {
               >
                 <span className={MENU_LABEL}>Commit</span>
                 <span className={MENU_DESC}>Just commit, don't push.</span>
-              </button>
-              <button
+              </Button>
+              <Button variant="unstyled"
                 role="menuitem"
                 className={MENU_ITEM_BASE}
                 onClick={() => {
@@ -244,7 +245,7 @@ export function CommitComposer() {
                 <span className={MENU_DESC}>
                   Commit, then `git push` to upstream.
                 </span>
-              </button>
+              </Button>
 
               <div className={MENU_SEP} />
 
@@ -335,7 +336,7 @@ function RemoteOpItem({
   onRun: () => void;
 }) {
   return (
-    <button
+    <Button variant="unstyled"
       role="menuitem"
       className={cn(
         MENU_ITEM_BASE,
@@ -356,6 +357,6 @@ function RemoteOpItem({
         )}
       </span>
       <span className={MENU_DESC}>{desc}</span>
-    </button>
+    </Button>
   );
 }

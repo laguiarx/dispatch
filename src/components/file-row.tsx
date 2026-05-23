@@ -3,6 +3,7 @@ import type { ChangedFile } from "@/features/git/git.types";
 import { cn } from "@/lib/utils";
 import { I, STATUS_META } from "./icons";
 import { Kbd } from "./kbd";
+import { Button } from "@/components/ui/button";
 
 type Props = {
   file: ChangedFile;
@@ -196,7 +197,7 @@ export function FileRow({
         ) : null}
       </span>
       <span className={ACTIONS}>
-        <button
+        <Button variant="unstyled"
           className={cn(STAGE_BTN, file.staged && STAGE_BTN_ON)}
           title={file.staged ? "Unstage" : "Stage"}
           onClick={(e) => {
@@ -206,9 +207,9 @@ export function FileRow({
           type="button"
         >
           {file.staged ? I.check : "+"}
-        </button>
+        </Button>
         <div className="relative inline-flex" ref={menuRef}>
-          <button
+          <Button variant="unstyled"
             className={cn(
               MORE_BTN,
               menuOpen && MORE_BTN_ACTIVE,
@@ -224,14 +225,14 @@ export function FileRow({
             aria-expanded={menuOpen}
           >
             {I.ellipsis}
-          </button>
+          </Button>
           {menuOpen ? (
             <div
               className={MORE_MENU}
               role="menu"
               onClick={(e) => e.stopPropagation()}
             >
-              <button
+              <Button variant="unstyled"
                 role="menuitem"
                 className={MORE_ITEM_BASE}
                 onClick={(e) => {
@@ -246,8 +247,8 @@ export function FileRow({
                   {file.reviewed ? "Unmark reviewed" : "Mark reviewed"}
                 </span>
                 <Kbd>⌘⇧M</Kbd>
-              </button>
-              <button
+              </Button>
+              <Button variant="unstyled"
                 role="menuitem"
                 className={cn(MORE_ITEM_BASE, MORE_ITEM_DANGER)}
                 onClick={(e) => {
@@ -260,7 +261,7 @@ export function FileRow({
                 <span className={MORE_ITEM_ICON}>{I.discard}</span>
                 <span>Discard changes</span>
                 <Kbd>⌘⌫</Kbd>
-              </button>
+              </Button>
             </div>
           ) : null}
         </div>

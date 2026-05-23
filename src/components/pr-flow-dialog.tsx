@@ -1,21 +1,20 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { BTN_GHOST, BTN_PRIMARY } from "@/lib/btn";
+import { Button } from "@/components/ui/button";
 import { useRepoStore } from "@/features/repository/repository.store";
 import { cn } from "@/lib/utils";
 import { I } from "./icons";
 import { Spinner } from "./spinner";
 
-// Same shell shape as PrBranchChoiceDialog — both are portal-mounted
+// Same shell shape as PrBranchChoiceDialog: both are portal-mounted
 // popovers anchored to the topbar Git pill. Duplicating the constants here
 // (instead of sharing) keeps each dialog independently editable; the rules
 // are identical for now and will diverge if we ever differentiate them.
 const POPOVER_SHELL =
   "fixed z-[9999] w-[min(420px,92vw)] flex flex-col overflow-hidden " +
-  "bg-[color-mix(in_oklab,var(--bg-1)_96%,transparent)] " +
+  "bg-bg-1 " +
   "border border-bd-2 rounded-3 " +
-  "shadow-[0_18px_50px_rgba(0,0,0,0.5),0_0_0_0.5px_rgba(255,255,255,0.04)] " +
-  "backdrop-blur-card backdrop-saturate-[140%]";
+  "shadow-[0_18px_50px_rgba(0,0,0,0.5),0_0_0_0.5px_rgba(255,255,255,0.04)]";
 const POPOVER_HEAD =
   "flex items-center gap-2 px-3.5 py-3 border-b border-bd-0 bg-bg-2";
 const POPOVER_EYEBROW =
@@ -94,7 +93,7 @@ export function PrFlowDialog() {
       <div className={POPOVER_HEAD}>
         <span className={POPOVER_EYEBROW}>Git · Create PR</span>
         <span className="flex-1" />
-        <button
+        <Button variant="unstyled"
           className={POPOVER_CLOSE}
           onClick={reset}
           type="button"
@@ -102,7 +101,7 @@ export function PrFlowDialog() {
           disabled={flow.state === "running"}
         >
           {I.x}
-        </button>
+        </Button>
       </div>
 
       <div className="px-[18px] pt-[18px] pb-4">
@@ -144,22 +143,23 @@ export function PrFlowDialog() {
               </a>
             ) : null}
             <div className="flex gap-2 justify-end">
-              <button className={BTN_GHOST} onClick={reset} type="button">
+              <Button variant="outline" size="sm" onClick={reset} type="button">
                 Close
-              </button>
+              </Button>
               {flow.url ? (
-                <a
-                  href={flow.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className={BTN_PRIMARY}
-                  // Once the user opens the PR in their browser, the
-                  // success card has served its purpose — collapse it so
-                  // the workspace is clear when they alt-tab back.
-                  onClick={reset}
-                >
-                  Open PR ↗
-                </a>
+                <Button asChild variant="default" size="sm">
+                  <a
+                    href={flow.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    // Once the user opens the PR in their browser, the
+                    // success card has served its purpose — collapse it so
+                    // the workspace is clear when they alt-tab back.
+                    onClick={reset}
+                  >
+                    Open PR ↗
+                  </a>
+                </Button>
               ) : null}
             </div>
           </div>
@@ -178,9 +178,9 @@ export function PrFlowDialog() {
               {flow.error}
             </div>
             <div className="flex gap-2 justify-end">
-              <button className={BTN_GHOST} onClick={reset} type="button">
+              <Button variant="outline" size="sm" onClick={reset} type="button">
                 Close
-              </button>
+              </Button>
             </div>
           </div>
         ) : null}

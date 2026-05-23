@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { BTN_GHOST, BTN_PRIMARY } from "@/lib/btn";
+import { Button } from "@/components/ui/button";
 import { useRepoStore } from "@/features/repository/repository.store";
 import { I } from "./icons";
 import { Overlay } from "./overlay";
@@ -53,14 +53,14 @@ export function StashPromptDialog() {
           <span className="text-[14px] font-semibold flex-1">
             Bring changes to the new branch
           </span>
-          <button
+          <Button variant="unstyled"
             className="w-[22px] h-[22px] grid place-items-center rounded-[4px] text-fg-3 bg-transparent border-0 cursor-pointer hover:bg-bg-hover hover:text-fg-0"
             onClick={cancel}
             title="Cancel"
             aria-label="Cancel"
           >
             {I.x}
-          </button>
+          </Button>
         </div>
         <div className="flex flex-col gap-3 px-4 py-3.5">
           <p className="m-0 text-[12.5px] text-fg-2 leading-[1.5]">
@@ -103,22 +103,24 @@ export function StashPromptDialog() {
           </label>
         </div>
         <div className="flex justify-end gap-2 px-4 py-3 border-t border-bd-1 bg-bg-0">
-          <button
-            className={BTN_GHOST}
+          <Button
+            variant="outline"
+            size="sm"
             onClick={cancel}
             disabled={busy}
             type="button"
           >
             Cancel
-          </button>
-          <button
-            className={BTN_PRIMARY}
+          </Button>
+          <Button
+            variant="default"
+            size="sm"
             onClick={submit}
             disabled={!message.trim() || busy}
             type="button"
           >
             {busy ? "Stashing…" : `Bring changes to ${pending.target}`}
-          </button>
+          </Button>
         </div>
       </div>
     </Overlay>

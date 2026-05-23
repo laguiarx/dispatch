@@ -41,6 +41,7 @@ import {
   buildCommands,
   buildFileCommands,
 } from "./commands";
+import { Button } from "@/components/ui/button";
 
 export function App() {
   const repository = useRepoStore((s) => s.repository);
@@ -365,7 +366,7 @@ export function App() {
         >
           <span className="font-mono font-semibold">Error</span>
           <span className="min-w-0 flex-1 truncate">{errorMessage}</span>
-          <button
+          <Button variant="unstyled"
             type="button"
             title="Copy error"
             aria-label="Copy error"
@@ -377,8 +378,8 @@ export function App() {
             onClick={copyErrorMessage}
           >
             {I.copy}
-          </button>
-          <button
+          </Button>
+          <Button variant="unstyled"
             type="button"
             className={cn(
               "px-1.5 py-0.5 rounded-[3px] bg-transparent border-0 cursor-pointer",
@@ -388,7 +389,7 @@ export function App() {
             onClick={() => setError(null)}
           >
             dismiss
-          </button>
+          </Button>
         </div>
       ) : null}
 

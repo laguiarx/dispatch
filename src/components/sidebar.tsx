@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import {
   filteredFiles,
   useRepoStore,
@@ -10,6 +10,8 @@ import { FileRow } from "./file-row";
 import { CommitComposer } from "./commit-composer";
 import { FileTree } from "./file-tree";
 import { SearchPanel } from "./search-panel";
+import { Button } from "@/components/ui/button";
+import { useDismissableLayer } from "@/hooks/use-dismissable-layer";
 
 // Top-row tab style (Changes / Files / Search). Same 24px height, radius-1
 // pill, hover/active states pulled from the design system.
@@ -170,7 +172,7 @@ export function Sidebar() {
     >
       {reviewedCardId ? (
         <div className="flex items-center px-2 h-[34px] gap-1 border-b border-bd-1 shrink-0">
-          <button
+          <Button variant="unstyled"
             type="button"
             onClick={() => {
               void exitReviewMode();
@@ -183,11 +185,11 @@ export function Sidebar() {
           >
             <span className="text-fg-3">←</span>
             <span>Back to board</span>
-          </button>
+          </Button>
         </div>
       ) : null}
       <div className="flex items-center px-2 h-[34px] gap-0.5 border-b border-bd-1 shrink-0">
-        <button
+        <Button variant="unstyled"
           className={cn(TAB, TAB_HOVER, sidebarTab === "changes" && TAB_ACTIVE)}
           onClick={() => setSidebarTab("changes")}
         >
@@ -200,19 +202,19 @@ export function Sidebar() {
           >
             {files.length}
           </span>
-        </button>
-        <button
+        </Button>
+        <Button variant="unstyled"
           className={cn(TAB, TAB_HOVER, sidebarTab === "files" && TAB_ACTIVE)}
           onClick={() => setSidebarTab("files")}
         >
           Files
-        </button>
-        <button
+        </Button>
+        <Button variant="unstyled"
           className={cn(TAB, TAB_HOVER, sidebarTab === "search" && TAB_ACTIVE)}
           onClick={() => setSidebarTab("search")}
         >
           Search
-        </button>
+        </Button>
       </div>
 
       {sidebarTab === "changes" ? (
@@ -261,13 +263,13 @@ export function Sidebar() {
                 spellCheck={false}
               />
               {filterText ? (
-                <button
+                <Button variant="unstyled"
                   className="grid place-items-center p-0.5 text-fg-3 hover:text-fg-0"
                   onClick={() => setFilterText("")}
                   title="Clear"
                 >
                   {I.x}
-                </button>
+                </Button>
               ) : null}
               <StatusFilterDropdown
                 value={statusFilter}
@@ -315,7 +317,7 @@ export function Sidebar() {
                 label="Staged"
                 count={stagedFiltered.length}
                 actions={
-                  <button
+                  <Button variant="unstyled"
                     className="grid place-items-center w-5 h-5 rounded text-fg-2 transition-colors hover:bg-bg-hover hover:text-fg-0"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -325,7 +327,7 @@ export function Sidebar() {
                     type="button"
                   >
                     {I.minus}
-                  </button>
+                  </Button>
                 }
               >
                 {stagedFiltered.map((f) => (
@@ -352,7 +354,7 @@ export function Sidebar() {
                 count={unstagedFiltered.length}
                 actions={
                   <>
-                    <button
+                    <Button variant="unstyled"
                       className="grid place-items-center w-5 h-5 rounded text-fg-2 transition-colors hover:bg-bg-hover hover:text-fg-0"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -362,7 +364,7 @@ export function Sidebar() {
                       type="button"
                     >
                       {I.plus}
-                    </button>
+                    </Button>
                     <GroupMoreMenu
                       onDiscardAll={() =>
                         requestDiscardMany(
@@ -394,7 +396,7 @@ export function Sidebar() {
             {filtered.length === 0 ? (
               <div className="px-4 py-5 text-center flex flex-col gap-2 font-mono text-fg-2">
                 <div>No files match.</div>
-                <button
+                <Button variant="unstyled"
                   className="self-center text-accent text-[12px] hover:underline"
                   onClick={() => {
                     setFilterText("");
@@ -403,7 +405,7 @@ export function Sidebar() {
                   }}
                 >
                   Clear filters
-                </button>
+                </Button>
               </div>
             ) : null}
           </div>
@@ -485,7 +487,7 @@ function SidebarGroup({
   return (
     <div className="pt-1.5 pb-0.5 group/section">
       <div className="flex items-center gap-1 pr-2">
-        <button
+        <Button variant="unstyled"
           className={cn(
             "flex items-center gap-1.5 px-3 py-1 flex-1 min-w-0 text-left",
             "font-mono text-[10.5px] uppercase tracking-[0.06em] text-fg-3",
@@ -503,7 +505,7 @@ function SidebarGroup({
           </span>
           <span>{label}</span>
           <span className="text-fg-3">{count}</span>
-        </button>
+        </Button>
         {actions ? (
           <div
             // Action cluster stays hidden until the section header is
@@ -528,26 +530,11 @@ function GroupMoreMenu({ onDiscardAll }: { onDiscardAll: () => void }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    function onDocClick(e: MouseEvent) {
-      const t = e.target as Node | null;
-      if (wrapRef.current && t && !wrapRef.current.contains(t)) setOpen(false);
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("mousedown", onDocClick);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDocClick);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
+  useDismissableLayer(open, setOpen, [wrapRef]);
 
   return (
     <div className="relative inline-flex" ref={wrapRef}>
-      <button
+      <Button variant="unstyled"
         type="button"
         className={cn(
           "grid place-items-center w-5 h-5 rounded text-fg-2 transition-colors",
@@ -563,7 +550,7 @@ function GroupMoreMenu({ onDiscardAll }: { onDiscardAll: () => void }) {
         aria-expanded={open}
       >
         {I.ellipsis}
-      </button>
+      </Button>
       {open ? (
         <div
           role="menu"
@@ -574,7 +561,7 @@ function GroupMoreMenu({ onDiscardAll }: { onDiscardAll: () => void }) {
           )}
           onClick={(e) => e.stopPropagation()}
         >
-          <button
+          <Button variant="unstyled"
             role="menuitem"
             className={cn(
               "grid grid-cols-[18px_1fr] items-center gap-2 w-full px-3 py-[7px]",
@@ -594,7 +581,7 @@ function GroupMoreMenu({ onDiscardAll }: { onDiscardAll: () => void }) {
               {I.discard}
             </span>
             <span>Discard all (in view)</span>
-          </button>
+          </Button>
         </div>
       ) : null}
     </div>
@@ -629,24 +616,7 @@ function StatusFilterDropdown({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    function onDocClick(e: MouseEvent) {
-      const target = e.target as Node | null;
-      if (ref.current && target && !ref.current.contains(target)) {
-        setOpen(false);
-      }
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("mousedown", onDocClick);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDocClick);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
+  useDismissableLayer(open, setOpen, [ref]);
 
   const current = STATUS_OPTIONS.find((o) => o.id === value) ?? STATUS_OPTIONS[0];
   const currentCount =
@@ -655,7 +625,7 @@ function StatusFilterDropdown({
 
   return (
     <div className="relative inline-flex items-center shrink-0 h-full" ref={ref}>
-      <button
+      <Button variant="unstyled"
         type="button"
         className={cn(
           "inline-flex items-center gap-1 h-5 min-w-5 pl-[7px] pr-1.5 rounded-1",
@@ -687,7 +657,7 @@ function StatusFilterDropdown({
         <span className="inline-flex items-center ml-0.5 text-fg-3 [&_svg]:h-[9px] [&_svg]:w-[9px]">
           {I.chevron}
         </span>
-      </button>
+      </Button>
       {open ? (
         <div
           role="menu"
@@ -700,7 +670,7 @@ function StatusFilterDropdown({
           {STATUS_OPTIONS.map((opt) => {
             const c = opt.id === "all" ? counts.all : counts[opt.id] || 0;
             return (
-              <button
+              <Button variant="unstyled"
                 key={opt.id}
                 role="menuitemradio"
                 aria-checked={value === opt.id}
@@ -729,7 +699,7 @@ function StatusFilterDropdown({
                 )}
                 <span className="whitespace-nowrap">{opt.label}</span>
                 <span className="font-mono text-fg-2 text-[10.5px]">{c}</span>
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -792,7 +762,7 @@ function MultiSelectBar({
         {count}
       </span>
       {canStage ? (
-        <button
+        <Button variant="unstyled"
           className={cn(btnBase, "overflow-hidden text-ellipsis")}
           onClick={onStage}
           title="Stage selected files"
@@ -800,10 +770,10 @@ function MultiSelectBar({
         >
           {I.plus}
           <span>Stage</span>
-        </button>
+        </Button>
       ) : null}
       {canUnstage ? (
-        <button
+        <Button variant="unstyled"
           className={cn(btnBase, "overflow-hidden text-ellipsis")}
           onClick={onUnstage}
           title="Unstage selected files"
@@ -811,9 +781,9 @@ function MultiSelectBar({
         >
           {I.minus}
           <span>Unstage</span>
-        </button>
+        </Button>
       ) : null}
-      <button
+      <Button variant="unstyled"
         className={btnBase}
         onClick={onMarkReviewed}
         title="Toggle reviewed (⌘⇧M)"
@@ -821,9 +791,9 @@ function MultiSelectBar({
       >
         {I.review}
         <span>Reviewed</span>
-      </button>
+      </Button>
       {canDiscard ? (
-        <button
+        <Button variant="unstyled"
           className={cn(
             iconBase,
             "hover:!text-git-del hover:!bg-[color-mix(in_oklab,var(--git-del)_18%,transparent)]",
@@ -834,10 +804,10 @@ function MultiSelectBar({
           type="button"
         >
           {I.discard}
-        </button>
+        </Button>
       ) : null}
       <span className="flex-1" />
-      <button
+      <Button variant="unstyled"
         className={cn(iconBase, "text-fg-2")}
         onClick={onClear}
         title="Clear selection"
@@ -845,10 +815,7 @@ function MultiSelectBar({
         type="button"
       >
         {I.x}
-      </button>
+      </Button>
     </div>
   );
 }
-
-// Re-export the StatusFilter type so consumers in lib/store stay decoupled.
-export type { StatusFilter };

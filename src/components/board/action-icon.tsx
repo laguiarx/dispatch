@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { ReactElement } from "react";
+import { Button } from "@/components/ui/button";
 
 import { cn } from "@/lib/utils";
+import { useDismissableLayer } from "@/hooks/use-dismissable-layer";
 import { I } from "@/components/icons";
 
 /**
@@ -28,7 +30,7 @@ export type ActionIconId =
   | "sparkles"
   | "discard";
 
-export const ACTION_ICONS: { id: ActionIconId; label: string }[] = [
+const ACTION_ICONS: { id: ActionIconId; label: string }[] = [
   { id: "play", label: "Run" },
   { id: "bug", label: "Debug" },
   { id: "check", label: "Test" },
@@ -72,33 +74,19 @@ export function ActionIconPicker({ value, onChange, title }: PickerProps) {
     null,
   );
 
+  useDismissableLayer(open, setOpen, [triggerRef, popRef]);
+
   useEffect(() => {
     if (!open) return;
     if (triggerRef.current) {
       const r = triggerRef.current.getBoundingClientRect();
       setAnchor({ top: r.bottom + 4, left: r.left });
     }
-    function onDocClick(e: MouseEvent) {
-      const t = e.target as Node | null;
-      const inside =
-        (triggerRef.current && t && triggerRef.current.contains(t)) ||
-        (popRef.current && t && popRef.current.contains(t));
-      if (!inside) setOpen(false);
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("mousedown", onDocClick);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDocClick);
-      document.removeEventListener("keydown", onKey);
-    };
   }, [open]);
 
   return (
     <>
-      <button
+      <Button variant="unstyled"
         ref={triggerRef}
         type="button"
         onClick={(e) => {
@@ -117,7 +105,7 @@ export function ActionIconPicker({ value, onChange, title }: PickerProps) {
         )}
       >
         {iconNodeFor(value)}
-      </button>
+      </Button>
       {open && anchor
         ? createPortal(
             <div
@@ -137,7 +125,7 @@ export function ActionIconPicker({ value, onChange, title }: PickerProps) {
               {ACTION_ICONS.map((icon) => {
                 const active = icon.id === value;
                 return (
-                  <button
+                  <Button variant="unstyled"
                     key={icon.id}
                     type="button"
                     onClick={(e) => {
@@ -151,12 +139,12 @@ export function ActionIconPicker({ value, onChange, title }: PickerProps) {
                       "border text-fg-2",
                       "[&_svg]:w-3.5 [&_svg]:h-3.5",
                       active
-                        ? "bg-accent text-accent-fg border-transparent"
+                        ? "!bg-accent !bg-none text-accent-fg border-transparent"
                         : "bg-bg-2 border-bd-2 hover:bg-bg-hover hover:text-fg-0 hover:border-bd-1",
                     )}
                   >
                     {iconNodeFor(icon.id)}
-                  </button>
+                  </Button>
                 );
               })}
             </div>,

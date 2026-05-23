@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 
 import { cn } from "@/lib/utils";
 import { Overlay } from "@/components/overlay";
@@ -100,14 +101,14 @@ export function ProjectScriptsDialog({ projectId, onClose }: Props) {
             Actions · {project.name}
           </span>
           <span className="flex-1" />
-          <button
+          <Button variant="unstyled"
             type="button"
             onClick={onClose}
             title="Close"
             className="w-[22px] h-[22px] grid place-items-center rounded-[4px] text-fg-3 bg-transparent border-0 cursor-pointer hover:bg-bg-hover hover:text-fg-0"
           >
             {I.x}
-          </button>
+          </Button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-2.5">
@@ -153,7 +154,7 @@ export function ProjectScriptsDialog({ projectId, onClose }: Props) {
                     }}
                   />
                 ) : (
-                  <button
+                  <Button variant="unstyled"
                     key={s.id}
                     type="button"
                     onClick={() => startEdit(s)}
@@ -183,10 +184,10 @@ export function ProjectScriptsDialog({ projectId, onClose }: Props) {
                     <span className="text-[10.5px] text-fg-3 opacity-0 group-hover:opacity-100">
                       Edit
                     </span>
-                  </button>
+                  </Button>
                 ),
               )}
-              <button
+              <Button variant="unstyled"
                 type="button"
                 onClick={startAdd}
                 className={cn(
@@ -197,14 +198,14 @@ export function ProjectScriptsDialog({ projectId, onClose }: Props) {
               >
                 <span className="text-[14px] leading-none">+</span>
                 Add action
-              </button>
+              </Button>
             </>
           )}
         </div>
 
         <div className="flex items-center gap-2 px-4 py-2.5 bg-bg-2 border-t border-bd-1 text-[11px]">
           <span className="flex-1" />
-          <button
+          <Button variant="unstyled"
             type="button"
             onClick={onClose}
             className={cn(
@@ -214,7 +215,7 @@ export function ProjectScriptsDialog({ projectId, onClose }: Props) {
             )}
           >
             Done <Kbd>Esc</Kbd>
-          </button>
+          </Button>
         </div>
       </div>
     </Overlay>
@@ -295,7 +296,7 @@ function ScriptForm({
 
       <div className="flex items-center gap-2 pt-1">
         {onDelete ? (
-          <button
+          <Button variant="unstyled"
             type="button"
             onClick={onDelete}
             title="Delete action"
@@ -308,10 +309,10 @@ function ScriptForm({
             )}
           >
             {I.discard}
-          </button>
+          </Button>
         ) : null}
         <span className="flex-1" />
-        <button
+        <Button variant="unstyled"
           type="button"
           onClick={onCancel}
           className={cn(
@@ -321,19 +322,19 @@ function ScriptForm({
           )}
         >
           Cancel
-        </button>
-        <button
+        </Button>
+        <Button variant="unstyled"
           type="button"
           onClick={onSave}
           disabled={!title.trim() || !command.trim()}
           className={cn(
             "h-7 px-3 rounded-[5px] text-[11.5px] font-medium",
-            "bg-accent text-accent-fg",
-            "hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed",
+            "!bg-accent !bg-none text-accent-fg",
+            "hover:!bg-accent hover:!bg-none disabled:opacity-40 disabled:cursor-not-allowed",
           )}
         >
           Save
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -373,18 +374,18 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
           a card's worktree from Review or Done.
         </div>
       </div>
-      <button
+      <Button variant="unstyled"
         type="button"
         onClick={onAdd}
         className={cn(
           "mt-1 inline-flex items-center gap-1.5 h-8 px-3 rounded-[6px]",
-          "text-[12px] font-medium bg-accent text-accent-fg",
-          "hover:opacity-90",
+          "text-[12px] font-medium !bg-accent !bg-none text-accent-fg",
+          "hover:!bg-accent hover:!bg-none",
         )}
       >
         <span className="text-[14px] leading-none">+</span>
         Add action
-      </button>
+      </Button>
     </div>
   );
 }
